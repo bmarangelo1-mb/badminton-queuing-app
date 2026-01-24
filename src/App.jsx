@@ -114,6 +114,8 @@ function reducer(state, action) {
     }
 
     case 'CREATE_MATCH': {
+      const available = getAvailableCourts(state.matches, state.courts);
+      if (available.length === 0) return state;
       // Get all waiting players (not currently playing) and sort by games played (ascending)
       const playingIds = new Set();
       for (const m of state.matches) {
@@ -128,10 +130,10 @@ function reducer(state, action) {
           }
           return (a.addedAt || 0) - (b.addedAt || 0);
         });
-      const { match, remainingQueue } = tryCreateMatch(waitingPlayers);
+      const { match, remainingQueue } = tryCreateMatch(waitingPlayers, {
+        allowUnbalancedIfOnlyOption: true,
+      });
       if (!match) return state;
-      const available = getAvailableCourts(state.matches, state.courts);
-      if (available.length === 0) return state;
       const courtId = available[0];
       const newMatch = {
         id: `m-${window.__nextMatchId++}`,
