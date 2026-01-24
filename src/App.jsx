@@ -358,8 +358,9 @@ export default function App() {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+      <div className="min-h-[90vh] flex-1 px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-3xl">
         <header className="mb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -533,7 +534,11 @@ export default function App() {
             )}
           </>
         )}
+        </div>
       </div>
+      <footer className="mx-auto mt-auto w-full max-w-3xl px-4 pb-6 pt-4 text-center text-sm text-slate-500 sm:px-6">
+        This app created by Mar B
+      </footer>
       {showEndQueueSummary && (
         <EndQueueSummary
           players={players}
