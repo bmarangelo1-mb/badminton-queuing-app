@@ -11,18 +11,67 @@
 
 const CATEGORIES = { BEGINNERS: 'Beginners', INTERMEDIATE: 'Intermediate' };
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 /**
- * Picks players in queue order (caller must sort by games played ascending first).
- * Prefers balanced matches. Use allowUnbalancedIfOnlyOption when there's an available
- * court and the only possible match has 3 of one category.
+ * Shuffle players within same games-played tier. Preserves "low games first" but randomizes
+ * order among ties so we don't always get "first four, then next four".
+ */
+function shuffleWithinTies(players) {
+  const byGames = new Map();
+  for (const p of players) {
+    const g = p.gamesPlayed ?? 0;
+    if (!byGames.has(g)) byGames.set(g, []);
+    byGames.get(g).push(p);
+  }
+  const games = [...byGames.keys()].sort((a, b) => a - b);
+  const out = [];
+  for (const g of games) {
+    out.push(...shuffle(byGames.get(g)));
+  }
+  return out;
+}
+
+/**
+ * Shuffle the 4 players and split into two teams of 2. Randomizes partners.
+ */
+function randomizePartners(match) {
+  const four = shuffle([...match.team1, ...match.team2]);
+  return { team1: [four[0], four[1]], team2: [four[2], four[3]] };
+}
+
+/**
+ * Score a match by total games played by its 4 players. Lower = better (prioritize neediest).
+ * Tie-break: lower max games played among the 4 (avoid adding games to those who already have many).
+ */
+function matchScore(m) {
+  const players = [...m.team1, ...m.team2];
+  const sum = players.reduce((s, p) => s + (p.gamesPlayed || 0), 0);
+  const max = Math.max(...players.map((p) => p.gamesPlayed || 0));
+  return [sum, max];
+}
+
+/**
+ * Picks players; caller must sort by games played ascending first.
+ * Shuffles within same games-played tiers so we don't always get "first four, then next four".
+ * Prefers balanced matches. When multiple match types exist, picks the one that minimizes
+ * total (then max) games played. If randomizePartners and everyone has played ≥1 game,
+ * shuffles the 4 players into random teams.
  *
  * @param {Array<{id: string, name: string, category: string, gamesPlayed?: number}>} queue
- * @param {{ allowUnbalancedIfOnlyOption?: boolean }} [opts]
+ * @param {{ allowUnbalancedIfOnlyOption?: boolean, randomizePartners?: boolean }} [opts]
  * @returns {{ match: { team1: [player, player], team2: [player, player] } | null, remainingQueue: typeof queue }}
  */
 export function tryCreateMatch(queue, opts = {}) {
-  const { allowUnbalancedIfOnlyOption = false } = opts;
-  const remainingQueue = [...queue];
+  const { allowUnbalancedIfOnlyOption = false, randomizePartners: doRandomizePartners = false } = opts;
+  const remainingQueue = shuffleWithinTies([...queue]);
   const beginners = remainingQueue.filter((p) => p.category === CATEGORIES.BEGINNERS);
   const intermediates = remainingQueue.filter((p) => p.category === CATEGORIES.INTERMEDIATE);
 
@@ -64,8 +113,14 @@ export function tryCreateMatch(queue, opts = {}) {
   }
 
   if (balancedMatches.length > 0) {
-    const randomIndex = Math.floor(Math.random() * balancedMatches.length);
-    return balancedMatches[randomIndex];
+    balancedMatches.sort((a, b) => {
+      const [sumA, maxA] = matchScore(a.match);
+      const [sumB, maxB] = matchScore(b.match);
+      return sumA !== sumB ? sumA - sumB : maxA - maxB;
+    });
+    const chosen = balancedMatches[0];
+    const match = doRandomizePartners ? randomizePartners(chosen.match) : chosen.match;
+    return { ...chosen, match };
   }
 
   // Exception: available court and only possible match has 3 of one category
@@ -97,8 +152,14 @@ export function tryCreateMatch(queue, opts = {}) {
     }
 
     if (fallbackMatches.length > 0) {
-      const randomIndex = Math.floor(Math.random() * fallbackMatches.length);
-      return fallbackMatches[randomIndex];
+      fallbackMatches.sort((a, b) => {
+        const [sumA, maxA] = matchScore(a.match);
+        const [sumB, maxB] = matchScore(b.match);
+        return sumA !== sumB ? sumA - sumB : maxA - maxB;
+      });
+      const chosen = fallbackMatches[0];
+      const match = doRandomizePartners ? randomizePartners(chosen.match) : chosen.match;
+      return { ...chosen, match };
     }
   }
 

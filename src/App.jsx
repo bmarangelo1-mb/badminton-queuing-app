@@ -126,14 +126,15 @@ function reducer(state, action) {
       const waitingPlayers = state.players
         .filter((p) => !playingIds.has(p.id))
         .sort((a, b) => {
-          // Sort by games played (ascending), then by addedAt (ascending) for tie-breaker
-          if (a.gamesPlayed !== b.gamesPlayed) {
-            return a.gamesPlayed - b.gamesPlayed;
-          }
+          if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
           return (a.addedAt || 0) - (b.addedAt || 0);
         });
+      const everyonePlayedOnce =
+        state.players.length > 0 &&
+        state.players.every((p) => (p.gamesPlayed || 0) >= 1);
       const { match, remainingQueue } = tryCreateMatch(waitingPlayers, {
         allowUnbalancedIfOnlyOption: true,
+        randomizePartners: everyonePlayedOnce,
       });
       if (!match) return state;
       const courtId = available[0];
