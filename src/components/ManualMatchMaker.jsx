@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 function CategoryBadge({ category }) {
   const isBeginners = category === 'Beginners';
@@ -13,20 +13,34 @@ function CategoryBadge({ category }) {
   );
 }
 
-export default function ManualMatchMaker({ players, playingIds, matches, courts, onCreate, onClose }) {
+export default function ManualMatchMaker({ players, playingIds, matches, courts, onCreate, onUpdate, editMatchId, onClose }) {
+  const editMatch = useMemo(() => editMatchId ? matches.find((m) => m.id === editMatchId) : null, [matches, editMatchId]);
+  
   const [selectedTeam1, setSelectedTeam1] = useState([]);
   const [selectedTeam2, setSelectedTeam2] = useState([]);
   const [selectedCourt, setSelectedCourt] = useState(1);
 
-  const waitingPlayers = useMemo(
-    () => players.filter((p) => !playingIds.has(p.id)),
-    [players, playingIds]
-  );
+  useEffect(() => {
+    if (editMatch) {
+      setSelectedTeam1(editMatch.team1.map((p) => p.id));
+      setSelectedTeam2(editMatch.team2.map((p) => p.id));
+      setSelectedCourt(editMatch.courtId);
+    }
+  }, [editMatch]);
+
+  const availablePlayers = useMemo(() => {
+    if (editMatch) {
+      // When editing, show all players but mark those playing in other matches
+      return players;
+    }
+    // When creating, only show waiting players
+    return players.filter((p) => !playingIds.has(p.id));
+  }, [players, playingIds, editMatch]);
 
   const availableCourts = useMemo(() => {
-    const used = new Set(matches.map((m) => m.courtId));
+    const used = new Set(matches.filter((m) => m.id !== editMatchId).map((m) => m.courtId));
     return Array.from({ length: courts }, (_, i) => i + 1).filter((id) => !used.has(id));
-  }, [matches, courts]);
+  }, [matches, courts, editMatchId]);
 
   const togglePlayer = (playerId, team) => {
     const isSelected = team === 1 ? selectedTeam1.includes(playerId) : selectedTeam2.includes(playerId);
@@ -54,21 +68,27 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
     }
   };
 
-  const handleCreate = () => {
+  const handleSubmit = () => {
     if (selectedTeam1.length === 2 && selectedTeam2.length === 2 && selectedCourt) {
-      onCreate(selectedTeam1, selectedTeam2, selectedCourt);
+      if (editMatchId && onUpdate) {
+        onUpdate(editMatchId, selectedTeam1, selectedTeam2, selectedCourt);
+      } else {
+        onCreate(selectedTeam1, selectedTeam2, selectedCourt);
+      }
       onClose();
     }
   };
 
-  const canCreate = selectedTeam1.length === 2 && selectedTeam2.length === 2 && selectedCourt && availableCourts.includes(selectedCourt);
+  const canSubmit = selectedTeam1.length === 2 && selectedTeam2.length === 2 && selectedCourt && availableCourts.includes(selectedCourt);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="border-b border-slate-200 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-slate-900">Manual Match Creation</h2>
+            <h2 className="text-2xl font-bold text-slate-900">
+              {editMatchId ? 'Edit Match' : 'Manual Match Creation'}
+            </h2>
             <button
               type="button"
               onClick={onClose}
@@ -78,7 +98,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
             </button>
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            Select 2 players for each team and choose a court.
+            {editMatchId ? 'Update players and court for this match.' : 'Select 2 players for each team and choose a court.'}
           </p>
         </div>
         
@@ -104,19 +124,20 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                 Team 1 ({selectedTeam1.length}/2)
               </h3>
               <div className="space-y-2">
-                {waitingPlayers.map((p) => {
+                {availablePlayers.map((p) => {
                   const isSelected = selectedTeam1.includes(p.id);
                   const isInOtherTeam = selectedTeam2.includes(p.id);
+                  const isPlayingElsewhere = editMatch && !editMatch.team1.some((t) => t.id === p.id) && !editMatch.team2.some((t) => t.id === p.id) && playingIds.has(p.id);
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => togglePlayer(p.id, 1)}
-                      disabled={isInOtherTeam || (!isSelected && selectedTeam1.length >= 2)}
+                      disabled={isInOtherTeam || (!isSelected && selectedTeam1.length >= 2) || isPlayingElsewhere}
                       className={`w-full rounded-xl border px-4 py-2.5 text-left transition ${
                         isSelected
                           ? 'border-emerald-500 bg-emerald-50'
-                          : isInOtherTeam
+                          : isInOtherTeam || isPlayingElsewhere
                           ? 'border-slate-200 bg-slate-100 opacity-50'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                       } disabled:cursor-not-allowed`}
@@ -128,6 +149,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                           <span className="text-xs text-slate-500">
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
                           </span>
+                          {isPlayingElsewhere && <span className="text-xs text-amber-600">(Playing)</span>}
                         </div>
                         {isSelected && <span className="text-emerald-600">✓</span>}
                       </div>
@@ -142,19 +164,20 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                 Team 2 ({selectedTeam2.length}/2)
               </h3>
               <div className="space-y-2">
-                {waitingPlayers.map((p) => {
+                {availablePlayers.map((p) => {
                   const isSelected = selectedTeam2.includes(p.id);
                   const isInOtherTeam = selectedTeam1.includes(p.id);
+                  const isPlayingElsewhere = editMatch && !editMatch.team1.some((t) => t.id === p.id) && !editMatch.team2.some((t) => t.id === p.id) && playingIds.has(p.id);
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => togglePlayer(p.id, 2)}
-                      disabled={isInOtherTeam || (!isSelected && selectedTeam2.length >= 2)}
+                      disabled={isInOtherTeam || (!isSelected && selectedTeam2.length >= 2) || isPlayingElsewhere}
                       className={`w-full rounded-xl border px-4 py-2.5 text-left transition ${
                         isSelected
                           ? 'border-blue-500 bg-blue-50'
-                          : isInOtherTeam
+                          : isInOtherTeam || isPlayingElsewhere
                           ? 'border-slate-200 bg-slate-100 opacity-50'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                       } disabled:cursor-not-allowed`}
@@ -166,6 +189,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                           <span className="text-xs text-slate-500">
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
                           </span>
+                          {isPlayingElsewhere && <span className="text-xs text-amber-600">(Playing)</span>}
                         </div>
                         {isSelected && <span className="text-blue-600">✓</span>}
                       </div>
@@ -188,11 +212,11 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
             </button>
             <button
               type="button"
-              onClick={handleCreate}
-              disabled={!canCreate}
+              onClick={handleSubmit}
+              disabled={!canSubmit}
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Create Match
+              {editMatchId ? 'Update Match' : 'Create Match'}
             </button>
           </div>
         </div>

@@ -92,6 +92,20 @@ function reducer(state, action) {
       return { ...state, players, queue };
     }
 
+    case 'UPDATE_PLAYER': {
+      const { id, name, category } = action.payload;
+      const players = state.players.map((p) =>
+        p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p
+      );
+      // Update player in matches too
+      const matches = state.matches.map((m) => ({
+        ...m,
+        team1: m.team1.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p)),
+        team2: m.team2.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p)),
+      }));
+      return { ...state, players, matches };
+    }
+
     case 'REMOVE_PLAYER': {
       const id = action.payload;
       const playerToRemove = state.players.find((p) => p.id === id);
@@ -107,6 +121,43 @@ function reducer(state, action) {
           ? [...state.removedPlayers, { ...playerToRemove, removedAt: Date.now() }]
           : state.removedPlayers;
       return { ...state, players, queue, matches, removedPlayers };
+    }
+
+    case 'UPDATE_MATCH': {
+      const { matchId, team1Ids, team2Ids, courtId } = action.payload;
+      const team1 = team1Ids.map((id) => state.players.find((p) => p.id === id)).filter(Boolean);
+      const team2 = team2Ids.map((id) => state.players.find((p) => p.id === id)).filter(Boolean);
+      
+      if (team1.length !== 2 || team2.length !== 2) return state;
+      
+      const allIds = [...team1Ids, ...team2Ids];
+      const playingIds = new Set();
+      for (const m of state.matches) {
+        if (m.id !== matchId) {
+          for (const p of [...m.team1, ...m.team2]) playingIds.add(p.id);
+        }
+      }
+      
+      // Check all players are waiting (not playing in other matches)
+      if (allIds.some((id) => playingIds.has(id))) return state;
+      
+      const matches = state.matches.map((m) =>
+        m.id === matchId
+          ? { ...m, team1, team2, courtId }
+          : m
+      );
+      
+      // Update queue - remove new players, add back old players if they're not in any match
+      const oldMatch = state.matches.find((m) => m.id === matchId);
+      const oldIds = oldMatch ? [...oldMatch.team1, ...oldMatch.team2].map((p) => p.id) : [];
+      const newPlayingIds = new Set();
+      for (const m of matches) {
+        for (const p of [...m.team1, ...m.team2]) newPlayingIds.add(p.id);
+      }
+      const playersToAddBack = oldIds.filter((id) => !allIds.includes(id) && !newPlayingIds.has(id));
+      const queue = [...state.queue.filter((id) => !allIds.includes(id)), ...playersToAddBack];
+      
+      return { ...state, matches, queue };
     }
 
     case 'START_QUEUE': {
@@ -250,6 +301,7 @@ export default function App() {
   const { phase, courts, players, queue, matches, removedPlayers } = state;
   const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
   const [showManualMatchMaker, setShowManualMatchMaker] = useState(false);
+  const [editingMatchId, setEditingMatchId] = useState(null);
   const [confirmCancelMatchId, setConfirmCancelMatchId] = useState(null);
   const [setupResetKey, setSetupResetKey] = useState(0);
 
@@ -295,6 +347,10 @@ export default function App() {
     dispatch({ type: 'ADD_PLAYER', payload: { name, category } });
   }, []);
 
+  const updatePlayer = useCallback((id, { name, category }) => {
+    dispatch({ type: 'UPDATE_PLAYER', payload: { id, name, category } });
+  }, []);
+
   const removePlayer = useCallback((id) => {
     dispatch({ type: 'REMOVE_PLAYER', payload: id });
   }, []);
@@ -328,6 +384,10 @@ export default function App() {
 
   const createManualMatch = useCallback((team1Ids, team2Ids, courtId) => {
     dispatch({ type: 'MANUAL_CREATE_MATCH', payload: { team1Ids, team2Ids, courtId } });
+  }, []);
+
+  const updateMatch = useCallback((matchId, team1Ids, team2Ids, courtId) => {
+    dispatch({ type: 'UPDATE_MATCH', payload: { matchId, team1Ids, team2Ids, courtId } });
   }, []);
 
   const endQueue = useCallback(() => {
@@ -497,6 +557,7 @@ export default function App() {
               <PlayerStatusList
                 players={players}
                 playingIds={playingIds}
+                onUpdate={updatePlayer}
                 onRemove={removePlayer}
               />
             </section>
@@ -509,7 +570,10 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowManualMatchMaker(true)}
+                    onClick={() => {
+                      setEditingMatchId(null);
+                      setShowManualMatchMaker(true);
+                    }}
                     className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 sm:flex-none"
                   >
                     Manual Match
@@ -522,6 +586,10 @@ export default function App() {
                 courts={courts}
                 onCompleteMatch={completeMatch}
                 onCancelMatch={requestCancelMatch}
+                onEditMatch={(matchId) => {
+                  setEditingMatchId(matchId);
+                  setShowManualMatchMaker(true);
+                }}
               />
             </section>
 
@@ -565,7 +633,12 @@ export default function App() {
           matches={matches}
           courts={courts}
           onCreate={createManualMatch}
-          onClose={() => setShowManualMatchMaker(false)}
+          onUpdate={updateMatch}
+          editMatchId={editingMatchId}
+          onClose={() => {
+            setShowManualMatchMaker(false);
+            setEditingMatchId(null);
+          }}
         />
       )}
     </div>

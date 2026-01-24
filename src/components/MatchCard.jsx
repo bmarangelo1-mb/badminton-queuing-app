@@ -1,8 +1,17 @@
-export default function MatchCard({ match, onComplete, onCancel }) {
+export default function MatchCard({ match, onComplete, onCancel, onEdit }) {
   const { courtId, team1, team2 } = match;
 
   return (
-    <div className="flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div
+      className={`flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition ${
+        onEdit ? 'cursor-pointer hover:border-emerald-300 hover:shadow-md' : 'hover:shadow-md'
+      }`}
+      onClick={onEdit ? (e) => {
+        if (e.target.tagName !== 'BUTTON') {
+          onEdit();
+        }
+      } : undefined}
+    >
       <div className="mb-3 flex items-center gap-2">
         <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
           Court {courtId}
