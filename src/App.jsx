@@ -5,6 +5,7 @@ import PlayerStatusList from './components/PlayerStatusList';
 import PlayerSummary from './components/PlayerSummary';
 import EndQueueSummary from './components/EndQueueSummary';
 import ManualMatchMaker from './components/ManualMatchMaker';
+import ConfirmDialog from './components/ConfirmDialog';
 import MatchList from './components/MatchList';
 import CourtConfig from './components/CourtConfig';
 import StartQueueButton from './components/StartQueueButton';
@@ -232,6 +233,7 @@ export default function App() {
   const { phase, courts, players, queue, matches, removedPlayers } = state;
   const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
   const [showManualMatchMaker, setShowManualMatchMaker] = useState(false);
+  const [confirmCancelMatchId, setConfirmCancelMatchId] = useState(null);
 
   const playingIds = useMemo(() => {
     const set = new Set();
@@ -291,10 +293,19 @@ export default function App() {
     dispatch({ type: 'COMPLETE_MATCH', payload: matchId });
   }, []);
 
-  const cancelMatch = useCallback((matchId) => {
-    if (window.confirm('Cancel this match? Players will return to the waiting queue.')) {
-      dispatch({ type: 'CANCEL_MATCH', payload: matchId });
+  const requestCancelMatch = useCallback((matchId) => {
+    setConfirmCancelMatchId(matchId);
+  }, []);
+
+  const confirmCancelMatch = useCallback(() => {
+    if (confirmCancelMatchId) {
+      dispatch({ type: 'CANCEL_MATCH', payload: confirmCancelMatchId });
+      setConfirmCancelMatchId(null);
     }
+  }, [confirmCancelMatchId]);
+
+  const dismissCancelMatch = useCallback(() => {
+    setConfirmCancelMatchId(null);
   }, []);
 
   const createManualMatch = useCallback((team1Ids, team2Ids, courtId) => {
@@ -472,7 +483,7 @@ export default function App() {
                 matches={matches}
                 courts={courts}
                 onCompleteMatch={completeMatch}
-                onCancelMatch={cancelMatch}
+                onCancelMatch={requestCancelMatch}
               />
             </section>
 
@@ -495,6 +506,16 @@ export default function App() {
           onCancel={cancelEndQueue}
         />
       )}
+      <ConfirmDialog
+        open={!!confirmCancelMatchId}
+        title="Cancel match?"
+        message="Players will return to the waiting queue. No games will be counted."
+        confirmLabel="Cancel match"
+        cancelLabel="Keep match"
+        variant="danger"
+        onConfirm={confirmCancelMatch}
+        onCancel={dismissCancelMatch}
+      />
       {showManualMatchMaker && (
         <ManualMatchMaker
           players={players}
