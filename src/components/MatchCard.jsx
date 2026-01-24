@@ -1,4 +1,4 @@
-export default function MatchCard({ match, onComplete }) {
+export default function MatchCard({ match, onComplete, onCancel }) {
   const { courtId, team1, team2 } = match;
 
   return (
@@ -13,7 +13,7 @@ export default function MatchCard({ match, onComplete }) {
         <span className="shrink-0 font-medium text-slate-400">vs</span>
         <TeamDisplay team={team2} />
       </div>
-      <div className="mt-auto flex justify-center pt-1">
+      <div className="mt-auto flex flex-col gap-2 pt-1">
         <button
           type="button"
           onClick={onComplete}
@@ -21,6 +21,15 @@ export default function MatchCard({ match, onComplete }) {
         >
           Complete match
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+          >
+            Cancel match
+          </button>
+        )}
       </div>
     </div>
   );

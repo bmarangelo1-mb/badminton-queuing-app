@@ -1,6 +1,6 @@
 import MatchCard from './MatchCard';
 
-export default function MatchList({ matches, courts, onCompleteMatch }) {
+export default function MatchList({ matches, courts, onCompleteMatch, onCancelMatch }) {
   if (!matches.length) {
     return (
       <p className="text-sm text-slate-500">
@@ -22,6 +22,7 @@ export default function MatchList({ matches, courts, onCompleteMatch }) {
             key={m.id}
             match={m}
             onComplete={() => onCompleteMatch(m.id)}
+            onCancel={onCancelMatch ? () => onCancelMatch(m.id) : undefined}
           />
         ) : (
           <div

@@ -4,6 +4,7 @@ import PlayerList from './components/PlayerList';
 import PlayerStatusList from './components/PlayerStatusList';
 import PlayerSummary from './components/PlayerSummary';
 import EndQueueSummary from './components/EndQueueSummary';
+import ManualMatchMaker from './components/ManualMatchMaker';
 import MatchList from './components/MatchList';
 import CourtConfig from './components/CourtConfig';
 import StartQueueButton from './components/StartQueueButton';
@@ -158,6 +159,50 @@ function reducer(state, action) {
       return { ...state, players, queue, matches };
     }
 
+    case 'CANCEL_MATCH': {
+      const m = state.matches.find((x) => x.id === action.payload);
+      if (!m) return state;
+      const ids = [...m.team1, ...m.team2].map((p) => p.id);
+      // Return players to end of queue (maintaining priority order)
+      const queue = [...state.queue, ...ids];
+      const matches = state.matches.filter((x) => x.id !== action.payload);
+      return { ...state, queue, matches };
+    }
+
+    case 'MANUAL_CREATE_MATCH': {
+      const { team1Ids, team2Ids, courtId } = action.payload;
+      const team1 = team1Ids.map((id) => state.players.find((p) => p.id === id)).filter(Boolean);
+      const team2 = team2Ids.map((id) => state.players.find((p) => p.id === id)).filter(Boolean);
+      
+      if (team1.length !== 2 || team2.length !== 2) return state;
+      
+      const allIds = [...team1Ids, ...team2Ids];
+      const playingIds = new Set();
+      for (const m of state.matches) {
+        for (const p of [...m.team1, ...m.team2]) playingIds.add(p.id);
+      }
+      
+      // Check all players are waiting (not playing)
+      if (allIds.some((id) => playingIds.has(id))) return state;
+      
+      const newMatch = {
+        id: `m-${window.__nextMatchId++}`,
+        courtId,
+        team1,
+        team2,
+        createdAt: Date.now(),
+      };
+      
+      // Remove players from queue
+      const queue = state.queue.filter((id) => !allIds.includes(id));
+      
+      return {
+        ...state,
+        queue,
+        matches: [...state.matches, newMatch],
+      };
+    }
+
     case 'END_QUEUE': {
       // Reset to initial state
       window.__nextPlayerId = 1;
@@ -186,6 +231,7 @@ export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { phase, courts, players, queue, matches, removedPlayers } = state;
   const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
+  const [showManualMatchMaker, setShowManualMatchMaker] = useState(false);
 
   const playingIds = useMemo(() => {
     const set = new Set();
@@ -243,6 +289,16 @@ export default function App() {
 
   const completeMatch = useCallback((matchId) => {
     dispatch({ type: 'COMPLETE_MATCH', payload: matchId });
+  }, []);
+
+  const cancelMatch = useCallback((matchId) => {
+    if (window.confirm('Cancel this match? Players will return to the waiting queue.')) {
+      dispatch({ type: 'CANCEL_MATCH', payload: matchId });
+    }
+  }, []);
+
+  const createManualMatch = useCallback((team1Ids, team2Ids, courtId) => {
+    dispatch({ type: 'MANUAL_CREATE_MATCH', payload: { team1Ids, team2Ids, courtId } });
   }, []);
 
   const endQueue = useCallback(() => {
@@ -401,12 +457,22 @@ export default function App() {
                 <h2 className="text-lg font-semibold text-slate-800">
                   Matches
                 </h2>
-                <CreateMatchButton canCreate={canCreate} onCreate={createMatch} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualMatchMaker(true)}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                  >
+                    Manual Match
+                  </button>
+                  <CreateMatchButton canCreate={canCreate} onCreate={createMatch} />
+                </div>
               </div>
               <MatchList
                 matches={matches}
                 courts={courts}
                 onCompleteMatch={completeMatch}
+                onCancelMatch={cancelMatch}
               />
             </section>
 
@@ -427,6 +493,16 @@ export default function App() {
           removedPlayers={removedPlayers}
           onConfirm={confirmEndQueue}
           onCancel={cancelEndQueue}
+        />
+      )}
+      {showManualMatchMaker && (
+        <ManualMatchMaker
+          players={players}
+          playingIds={playingIds}
+          matches={matches}
+          courts={courts}
+          onCreate={createManualMatch}
+          onClose={() => setShowManualMatchMaker(false)}
         />
       )}
     </div>
