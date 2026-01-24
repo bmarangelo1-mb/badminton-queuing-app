@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useMemo } from 'react';
+import { useReducer, useCallback, useMemo, useEffect } from 'react';
 import PlayerInput from './components/PlayerInput';
 import PlayerList from './components/PlayerList';
 import PlayerStatusList from './components/PlayerStatusList';
@@ -13,17 +13,57 @@ import {
   canCreateMatch,
 } from './utils/queueMatcher';
 
-let nextId = 1;
-let nextMatchId = 1;
+const STORAGE_KEY = 'badminton-queue-state';
 
-const initialState = {
-  phase: 'setup',
-  courts: 1,
-  players: [],
-  queue: [],
-  matches: [],
-  removedPlayers: [],
-};
+function getInitialState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Calculate next IDs from existing data to avoid conflicts
+      const playerIds = [
+        ...(parsed.players || []).map((p) => {
+          const match = p.id?.match(/^p-(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        }),
+        ...(parsed.removedPlayers || []).map((p) => {
+          const match = p.id?.match(/^p-(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        }),
+      ];
+      const matchIds = (parsed.matches || []).map((m) => {
+        const match = m.id?.match(/^m-(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+      const maxPlayerId = playerIds.length > 0 ? Math.max(0, ...playerIds) : 0;
+      const maxMatchId = matchIds.length > 0 ? Math.max(0, ...matchIds) : 0;
+      // Set global counters
+      window.__nextPlayerId = maxPlayerId + 1;
+      window.__nextMatchId = maxMatchId + 1;
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to load state from localStorage:', e);
+  }
+  return {
+    phase: 'setup',
+    courts: 1,
+    players: [],
+    queue: [],
+    matches: [],
+    removedPlayers: [],
+  };
+}
+
+const initialState = getInitialState();
+
+// Initialize counters if not set
+if (!window.__nextPlayerId) {
+  window.__nextPlayerId = 1;
+}
+if (!window.__nextMatchId) {
+  window.__nextMatchId = 1;
+}
 
 function reducer(state, action) {
   switch (action.type) {
@@ -37,7 +77,7 @@ function reducer(state, action) {
 
     case 'ADD_PLAYER': {
       const player = {
-        id: `p-${nextId++}`,
+        id: `p-${window.__nextPlayerId++}`,
         name: action.payload.name,
         category: action.payload.category,
         gamesPlayed: 0,
@@ -71,23 +111,28 @@ function reducer(state, action) {
     }
 
     case 'CREATE_MATCH': {
-      const queueAsPlayers = state.queue
-        .map((id) => state.players.find((p) => p.id === id))
-        .filter(Boolean);
-      const { match, remainingQueue } = tryCreateMatch(queueAsPlayers);
+      // Get all waiting players (not currently playing)
+      const playingIds = new Set();
+      for (const m of state.matches) {
+        for (const p of [...m.team1, ...m.team2]) playingIds.add(p.id);
+      }
+      const waitingPlayers = state.players.filter((p) => !playingIds.has(p.id));
+      const { match, remainingQueue } = tryCreateMatch(waitingPlayers);
       if (!match) return state;
       const available = getAvailableCourts(state.matches, state.courts);
       if (available.length === 0) return state;
       const courtId = available[0];
       const newMatch = {
-        id: `m-${nextMatchId++}`,
+        id: `m-${window.__nextMatchId++}`,
         courtId,
         ...match,
         createdAt: Date.now(),
       };
+      // Update queue to reflect remaining waiting players
+      const newQueue = remainingQueue.map((p) => p.id);
       return {
         ...state,
-        queue: remainingQueue.map((p) => p.id),
+        queue: newQueue,
         matches: [...state.matches, newMatch],
       };
     }
@@ -102,6 +147,25 @@ function reducer(state, action) {
       const queue = [...state.queue, ...ids];
       const matches = state.matches.filter((x) => x.id !== action.payload);
       return { ...state, players, queue, matches };
+    }
+
+    case 'END_QUEUE': {
+      // Reset to initial state
+      window.__nextPlayerId = 1;
+      window.__nextMatchId = 1;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.warn('Failed to clear localStorage:', e);
+      }
+      return {
+        phase: 'setup',
+        courts: 1,
+        players: [],
+        queue: [],
+        matches: [],
+        removedPlayers: [],
+      };
     }
 
     default:
@@ -121,17 +185,15 @@ export default function App() {
     return set;
   }, [matches]);
 
-  const queueAsPlayers = useMemo(
-    () =>
-      queue
-        .map((id) => players.find((p) => p.id === id))
-        .filter(Boolean),
-    [queue, players]
+  // Get all waiting players (not currently playing)
+  const waitingPlayers = useMemo(
+    () => players.filter((p) => !playingIds.has(p.id)),
+    [players, playingIds]
   );
 
   const canCreate = useMemo(
-    () => canCreateMatch(queueAsPlayers, matches, courts),
-    [queueAsPlayers, matches, courts]
+    () => canCreateMatch(waitingPlayers, matches, courts),
+    [waitingPlayers, matches, courts]
   );
 
   const playingCount = useMemo(() => playingIds.size, [playingIds]);
@@ -164,27 +226,55 @@ export default function App() {
     dispatch({ type: 'COMPLETE_MATCH', payload: matchId });
   }, []);
 
+  const endQueue = useCallback(() => {
+    if (window.confirm('Are you sure you want to end the queue? This will clear all data and reset the app.')) {
+      dispatch({ type: 'END_QUEUE' });
+    }
+  }, []);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('Failed to save state to localStorage:', e);
+    }
+  }, [state]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Badminton doubles queue
-          </h1>
-          <div className="mt-2 flex items-center gap-2">
-            <span
-              className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-                phase === 'setup'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-emerald-100 text-emerald-800'
-              }`}
-            >
-              {phase === 'setup' ? 'Setup' : 'Active'}
-            </span>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                Badminton doubles queue
+              </h1>
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
+                    phase === 'setup'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  {phase === 'setup' ? 'Setup' : 'Active'}
+                </span>
+                {phase === 'active' && (
+                  <span className="text-sm text-slate-500">
+                    {courts} court{courts !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
             {phase === 'active' && (
-              <span className="text-sm text-slate-500">
-                {courts} court{courts !== 1 ? 's' : ''}
-              </span>
+              <button
+                type="button"
+                onClick={endQueue}
+                className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                End Queue
+              </button>
             )}
           </div>
         </header>
