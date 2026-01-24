@@ -112,12 +112,20 @@ function reducer(state, action) {
     }
 
     case 'CREATE_MATCH': {
-      // Get all waiting players (not currently playing)
+      // Get all waiting players (not currently playing) and sort by games played (ascending)
       const playingIds = new Set();
       for (const m of state.matches) {
         for (const p of [...m.team1, ...m.team2]) playingIds.add(p.id);
       }
-      const waitingPlayers = state.players.filter((p) => !playingIds.has(p.id));
+      const waitingPlayers = state.players
+        .filter((p) => !playingIds.has(p.id))
+        .sort((a, b) => {
+          // Sort by games played (ascending), then by addedAt (ascending) for tie-breaker
+          if (a.gamesPlayed !== b.gamesPlayed) {
+            return a.gamesPlayed - b.gamesPlayed;
+          }
+          return (a.addedAt || 0) - (b.addedAt || 0);
+        });
       const { match, remainingQueue } = tryCreateMatch(waitingPlayers);
       if (!match) return state;
       const available = getAvailableCourts(state.matches, state.courts);
@@ -187,9 +195,18 @@ export default function App() {
     return set;
   }, [matches]);
 
-  // Get all waiting players (not currently playing)
+  // Get all waiting players (not currently playing) and sort by games played (ascending)
   const waitingPlayers = useMemo(
-    () => players.filter((p) => !playingIds.has(p.id)),
+    () =>
+      players
+        .filter((p) => !playingIds.has(p.id))
+        .sort((a, b) => {
+          // Sort by games played (ascending), then by addedAt (ascending) for tie-breaker
+          if (a.gamesPlayed !== b.gamesPlayed) {
+            return a.gamesPlayed - b.gamesPlayed;
+          }
+          return (a.addedAt || 0) - (b.addedAt || 0);
+        }),
     [players, playingIds]
   );
 
