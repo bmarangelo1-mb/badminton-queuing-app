@@ -58,6 +58,33 @@ export function tryCreateMatch(queue) {
     });
   }
 
+  // 4. Fallback: Allow single player from one category to play with others
+  // 4a. 1 Intermediate + 1 Beginner vs 2 Beginners (if 1I + 3B available)
+  if (intermediates.length >= 1 && beginners.length >= 3) {
+    const i = intermediates[0];
+    const b = beginners.slice(0, 3);
+    const team1 = [i, b[0]];
+    const team2 = [b[1], b[2]];
+    const ids = new Set([...team1, ...team2].map((p) => p.id));
+    possibleMatches.push({
+      match: { team1, team2 },
+      remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
+    });
+  }
+
+  // 4b. 1 Beginner + 1 Intermediate vs 2 Intermediates (if 1B + 3I available)
+  if (beginners.length >= 1 && intermediates.length >= 3) {
+    const b = beginners[0];
+    const i = intermediates.slice(0, 3);
+    const team1 = [b, i[0]];
+    const team2 = [i[1], i[2]];
+    const ids = new Set([...team1, ...team2].map((p) => p.id));
+    possibleMatches.push({
+      match: { team1, team2 },
+      remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
+    });
+  }
+
   // Randomly select one from available options
   if (possibleMatches.length === 0) {
     return { match: null, remainingQueue };
