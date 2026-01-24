@@ -1,8 +1,9 @@
-import { useReducer, useCallback, useMemo, useEffect } from 'react';
+import { useReducer, useCallback, useMemo, useEffect, useState } from 'react';
 import PlayerInput from './components/PlayerInput';
 import PlayerList from './components/PlayerList';
 import PlayerStatusList from './components/PlayerStatusList';
 import PlayerSummary from './components/PlayerSummary';
+import EndQueueSummary from './components/EndQueueSummary';
 import MatchList from './components/MatchList';
 import CourtConfig from './components/CourtConfig';
 import StartQueueButton from './components/StartQueueButton';
@@ -176,6 +177,7 @@ function reducer(state, action) {
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { phase, courts, players, queue, matches, removedPlayers } = state;
+  const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
 
   const playingIds = useMemo(() => {
     const set = new Set();
@@ -227,9 +229,16 @@ export default function App() {
   }, []);
 
   const endQueue = useCallback(() => {
-    if (window.confirm('Are you sure you want to end the queue? This will clear all data and reset the app.')) {
-      dispatch({ type: 'END_QUEUE' });
-    }
+    setShowEndQueueSummary(true);
+  }, []);
+
+  const confirmEndQueue = useCallback(() => {
+    setShowEndQueueSummary(false);
+    dispatch({ type: 'END_QUEUE' });
+  }, []);
+
+  const cancelEndQueue = useCallback(() => {
+    setShowEndQueueSummary(false);
   }, []);
 
   // Save state to localStorage whenever it changes
@@ -395,6 +404,14 @@ export default function App() {
           </>
         )}
       </div>
+      {showEndQueueSummary && (
+        <EndQueueSummary
+          players={players}
+          removedPlayers={removedPlayers}
+          onConfirm={confirmEndQueue}
+          onCancel={cancelEndQueue}
+        />
+      )}
     </div>
   );
 }
