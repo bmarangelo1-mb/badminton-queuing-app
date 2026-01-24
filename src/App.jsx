@@ -333,6 +333,11 @@ export default function App() {
     [waitingPlayers, matches, courts]
   );
 
+  const availableCourts = useMemo(
+    () => getAvailableCourts(matches, courts),
+    [matches, courts]
+  );
+
   const playingCount = useMemo(() => playingIds.size, [playingIds]);
   const waitingCount = useMemo(
     () => players.filter((p) => !playingIds.has(p.id)).length,
@@ -570,11 +575,14 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <button
                     type="button"
+                    disabled={availableCourts.length === 0}
                     onClick={() => {
-                      setEditingMatchId(null);
-                      setShowManualMatchMaker(true);
+                      if (availableCourts.length > 0) {
+                        setEditingMatchId(null);
+                        setShowManualMatchMaker(true);
+                      }
                     }}
-                    className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 sm:flex-none"
+                    className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-none"
                   >
                     Manual Match
                   </button>

@@ -42,6 +42,19 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
     return Array.from({ length: courts }, (_, i) => i + 1).filter((id) => !used.has(id));
   }, [matches, courts, editMatchId]);
 
+  // Initialize selectedCourt to first available court when creating (not editing)
+  useEffect(() => {
+    if (!editMatch && availableCourts.length > 0) {
+      // Only update if current selection is not in available courts
+      if (!availableCourts.includes(selectedCourt)) {
+        setSelectedCourt(availableCourts[0]);
+      }
+    } else if (!editMatch && availableCourts.length === 0) {
+      // If no courts available, set to null/undefined to disable submit
+      setSelectedCourt(null);
+    }
+  }, [availableCourts, editMatch, selectedCourt]);
+
   const togglePlayer = (playerId, team) => {
     const isSelected = team === 1 ? selectedTeam1.includes(playerId) : selectedTeam2.includes(playerId);
     const otherTeam = team === 1 ? selectedTeam2 : selectedTeam1;
@@ -79,7 +92,12 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
     }
   };
 
-  const canSubmit = selectedTeam1.length === 2 && selectedTeam2.length === 2 && selectedCourt && availableCourts.includes(selectedCourt);
+  const canSubmit = 
+    selectedTeam1.length === 2 && 
+    selectedTeam2.length === 2 && 
+    selectedCourt && 
+    availableCourts.length > 0 &&
+    availableCourts.includes(selectedCourt);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -105,17 +123,21 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
         <div className="max-h-[70vh] overflow-y-auto p-6">
           <div className="mb-4">
             <label className="mb-2 block text-sm font-medium text-slate-700">Court</label>
-            <select
-              value={selectedCourt}
-              onChange={(e) => setSelectedCourt(parseInt(e.target.value, 10))}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              {availableCourts.map((courtId) => (
-                <option key={courtId} value={courtId}>
-                  Court {courtId}
-                </option>
-              ))}
-            </select>
+            {availableCourts.length > 0 ? (
+              <select
+                value={selectedCourt}
+                onChange={(e) => setSelectedCourt(parseInt(e.target.value, 10))}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                {availableCourts.map((courtId) => (
+                  <option key={courtId} value={courtId}>
+                    Court {courtId}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-amber-600">No available courts. Complete or cancel existing matches first.</p>
+            )}
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
