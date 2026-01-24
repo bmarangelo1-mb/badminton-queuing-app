@@ -2,6 +2,7 @@ import { useReducer, useCallback, useMemo } from 'react';
 import PlayerInput from './components/PlayerInput';
 import PlayerList from './components/PlayerList';
 import PlayerStatusList from './components/PlayerStatusList';
+import PlayerSummary from './components/PlayerSummary';
 import MatchList from './components/MatchList';
 import CourtConfig from './components/CourtConfig';
 import StartQueueButton from './components/StartQueueButton';
@@ -21,12 +22,18 @@ const initialState = {
   players: [],
   queue: [],
   matches: [],
+  removedPlayers: [],
 };
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'SET_COURTS':
-      return { ...state, courts: Math.max(1, Math.min(10, action.payload)) };
+    case 'SET_COURTS': {
+      const newCount = Math.max(1, Math.min(10, action.payload));
+      // Don't allow reducing courts below number of active matches
+      const minCourts = state.matches.length;
+      const finalCount = Math.max(newCount, minCourts);
+      return { ...state, courts: finalCount };
+    }
 
     case 'ADD_PLAYER': {
       const player = {
@@ -44,13 +51,17 @@ function reducer(state, action) {
 
     case 'REMOVE_PLAYER': {
       const id = action.payload;
+      const playerToRemove = state.players.find((p) => p.id === id);
       const players = state.players.filter((p) => p.id !== id);
       const queue = state.queue.filter((q) => q !== id);
       const matches = state.matches.filter(
         (m) =>
           ![...m.team1, ...m.team2].some((p) => p.id === id)
       );
-      return { ...state, players, queue, matches };
+      const removedPlayers = playerToRemove
+        ? [...state.removedPlayers, { ...playerToRemove, removedAt: Date.now() }]
+        : state.removedPlayers;
+      return { ...state, players, queue, matches, removedPlayers };
     }
 
     case 'START_QUEUE': {
@@ -100,7 +111,7 @@ function reducer(state, action) {
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { phase, courts, players, queue, matches } = state;
+  const { phase, courts, players, queue, matches, removedPlayers } = state;
 
   const playingIds = useMemo(() => {
     const set = new Set();
@@ -121,6 +132,12 @@ export default function App() {
   const canCreate = useMemo(
     () => canCreateMatch(queueAsPlayers, matches, courts),
     [queueAsPlayers, matches, courts]
+  );
+
+  const playingCount = useMemo(() => playingIds.size, [playingIds]);
+  const waitingCount = useMemo(
+    () => players.filter((p) => !playingIds.has(p.id)).length,
+    [players, playingIds]
   );
 
   const setCourts = useCallback((n) => {
@@ -214,6 +231,26 @@ export default function App() {
         {phase === 'active' && (
           <>
             <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Configuration
+                </h2>
+              </div>
+              <div className="flex flex-wrap items-end gap-6">
+                <CourtConfig
+                  courts={courts}
+                  onCourtsChange={setCourts}
+                  disabled={false}
+                />
+                {matches.length > 0 && (
+                  <p className="text-xs text-slate-500">
+                    Minimum: {matches.length} court{matches.length !== 1 ? 's' : ''} (active matches)
+                  </p>
+                )}
+              </div>
+            </section>
+
+            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
               <h2 className="mb-4 text-lg font-semibold text-slate-800">
                 Add player
               </h2>
@@ -221,9 +258,21 @@ export default function App() {
             </section>
 
             <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-              <h2 className="mb-4 text-lg font-semibold text-slate-800">
-                All players
-              </h2>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-slate-800">
+                  All players <span className="font-normal text-slate-500">({players.length})</span>
+                </h2>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+                    <span className="text-slate-600">Playing: <span className="font-semibold text-slate-900">{playingCount}</span></span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-slate-400"></span>
+                    <span className="text-slate-600">Waiting: <span className="font-semibold text-slate-900">{waitingCount}</span></span>
+                  </span>
+                </div>
+              </div>
               <PlayerStatusList
                 players={players}
                 playingIds={playingIds}
@@ -244,6 +293,15 @@ export default function App() {
                 onCompleteMatch={completeMatch}
               />
             </section>
+
+            {removedPlayers.length > 0 && (
+              <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
+                <h2 className="mb-4 text-lg font-semibold text-slate-800">
+                  Player Summary <span className="font-normal text-slate-500">({removedPlayers.length} removed)</span>
+                </h2>
+                <PlayerSummary removedPlayers={removedPlayers} />
+              </section>
+            )}
           </>
         )}
       </div>
