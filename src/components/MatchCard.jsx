@@ -43,7 +43,7 @@ function TeamDisplay({ team }) {
           {i > 0 && <span className="text-slate-400">+</span>}
           <span className="font-medium text-slate-900">{p.name}</span>
           <span
-            className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+            className={`inline-flex min-w-[5.5rem] items-center justify-center rounded px-1.5 py-0.5 text-xs font-medium ${
               p.category === 'Beginners'
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-slate-200 text-slate-700'

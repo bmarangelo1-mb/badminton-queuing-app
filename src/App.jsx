@@ -101,9 +101,11 @@ function reducer(state, action) {
         (m) =>
           ![...m.team1, ...m.team2].some((p) => p.id === id)
       );
-      const removedPlayers = playerToRemove
-        ? [...state.removedPlayers, { ...playerToRemove, removedAt: Date.now() }]
-        : state.removedPlayers;
+      // Only add to removedPlayers if removed during active phase (not setup)
+      const removedPlayers =
+        state.phase === 'active' && playerToRemove
+          ? [...state.removedPlayers, { ...playerToRemove, removedAt: Date.now() }]
+          : state.removedPlayers;
       return { ...state, players, queue, matches, removedPlayers };
     }
 

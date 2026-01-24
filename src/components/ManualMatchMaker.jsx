@@ -4,7 +4,7 @@ function CategoryBadge({ category }) {
   const isBeginners = category === 'Beginners';
   return (
     <span
-      className={`rounded-lg px-2 py-0.5 text-xs font-medium ${
+      className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg px-2 py-0.5 text-xs font-medium ${
         isBeginners ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
       }`}
     >
