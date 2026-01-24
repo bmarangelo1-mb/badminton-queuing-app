@@ -2,15 +2,15 @@ export default function MatchCard({ match, onComplete, onCancel }) {
   const { courtId, team1, team2 } = match;
 
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div className="flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md">
       <div className="mb-3 flex items-center gap-2">
         <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
           Court {courtId}
         </span>
       </div>
-      <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+      <div className="mb-4 flex min-w-0 flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap sm:gap-2">
         <TeamDisplay team={team1} />
-        <span className="shrink-0 font-medium text-slate-400">vs</span>
+        <span className="w-full shrink-0 py-1 text-center font-medium text-slate-400 sm:w-auto sm:py-0">vs</span>
         <TeamDisplay team={team2} />
       </div>
       <div className="mt-auto flex flex-col gap-2 pt-1">
@@ -37,7 +37,7 @@ export default function MatchCard({ match, onComplete, onCancel }) {
 
 function TeamDisplay({ team }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5">
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 sm:w-auto sm:justify-start">
       {team.map((p, i) => (
         <span key={p.id} className="flex items-center gap-1.5">
           {i > 0 && <span className="text-slate-400">+</span>}

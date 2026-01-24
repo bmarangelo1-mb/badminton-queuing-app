@@ -204,6 +204,18 @@ function reducer(state, action) {
       };
     }
 
+    case 'RESET_SETUP': {
+      if (state.phase !== 'setup') return state;
+      return {
+        ...state,
+        courts: 1,
+        players: [],
+        queue: [],
+        matches: [],
+        removedPlayers: [],
+      };
+    }
+
     case 'END_QUEUE': {
       // Reset to initial state
       window.__nextPlayerId = 1;
@@ -234,6 +246,7 @@ export default function App() {
   const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
   const [showManualMatchMaker, setShowManualMatchMaker] = useState(false);
   const [confirmCancelMatchId, setConfirmCancelMatchId] = useState(null);
+  const [setupResetKey, setSetupResetKey] = useState(0);
 
   const playingIds = useMemo(() => {
     const set = new Set();
@@ -325,6 +338,12 @@ export default function App() {
     setShowEndQueueSummary(false);
   }, []);
 
+  const resetSetup = useCallback(() => {
+    if (phase !== 'setup') return;
+    dispatch({ type: 'RESET_SETUP' });
+    setSetupResetKey((k) => k + 1);
+  }, [phase]);
+
   // Save state to localStorage whenever it changes
   useEffect(() => {
     try {
@@ -374,18 +393,20 @@ export default function App() {
 
         {phase === 'setup' && (
           <>
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
+            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
               <h2 className="mb-4 text-lg font-semibold text-slate-800">
                 Courts & players
               </h2>
-              <div className="mb-6 flex flex-wrap items-end gap-6">
-                <CourtConfig
-                  courts={courts}
-                  onCourtsChange={setCourts}
-                  disabled={false}
-                />
+              <div className="mb-6 flex flex-wrap items-end gap-4 sm:gap-6">
+                <div className="w-full min-w-0 sm:w-auto">
+                  <CourtConfig
+                    courts={courts}
+                    onCourtsChange={setCourts}
+                    disabled={false}
+                  />
+                </div>
               </div>
-              <PlayerInput onAdd={addPlayer} />
+              <PlayerInput key={setupResetKey} onAdd={addPlayer} />
               <div className="mt-6">
                 <h3 className="mb-3 text-sm font-medium text-slate-600">
                   Players
@@ -395,14 +416,23 @@ export default function App() {
                   onRemove={removePlayer}
                 />
               </div>
-              <div className="mt-6">
-                <StartQueueButton
-                  playerCount={players.length}
-                  onStart={startQueue}
-                  disabled={false}
-                />
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex flex-wrap items-center gap-3">
+                  <StartQueueButton
+                    playerCount={players.length}
+                    onStart={startQueue}
+                    disabled={false}
+                  />
+                  <button
+                    type="button"
+                    onClick={resetSetup}
+                    className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                  >
+                    Reset
+                  </button>
+                </div>
                 {players.length > 0 && players.length < 4 && (
-                  <p className="mt-2 text-sm text-amber-600">
+                  <p className="text-sm text-amber-600">
                     Add at least 4 players to start.
                   </p>
                 )}
@@ -413,18 +443,20 @@ export default function App() {
 
         {phase === 'active' && (
           <>
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
+              <div className="mb-4">
                 <h2 className="text-lg font-semibold text-slate-800">
                   Configuration
                 </h2>
               </div>
-              <div className="flex flex-wrap items-end gap-6">
-                <CourtConfig
-                  courts={courts}
-                  onCourtsChange={setCourts}
-                  disabled={false}
-                />
+              <div className="flex flex-wrap items-end gap-4 sm:gap-6">
+                <div className="w-full min-w-0 sm:w-auto">
+                  <CourtConfig
+                    courts={courts}
+                    onCourtsChange={setCourts}
+                    disabled={false}
+                  />
+                </div>
                 {matches.length > 0 && (
                   <p className="text-xs text-slate-500">
                     Minimum: {matches.length} court{matches.length !== 1 ? 's' : ''} (active matches)
@@ -463,16 +495,16 @@ export default function App() {
               />
             </section>
 
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <h2 className="text-lg font-semibold text-slate-800">
                   Matches
                 </h2>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setShowManualMatchMaker(true)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                    className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 sm:flex-none"
                   >
                     Manual Match
                   </button>

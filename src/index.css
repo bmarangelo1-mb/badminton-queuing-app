@@ -10,3 +10,16 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Hide native number input spinners – we use custom buttons */
+.court-number-input::-webkit-inner-spin-button,
+.court-number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.court-number-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
