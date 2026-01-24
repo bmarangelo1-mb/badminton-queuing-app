@@ -68,7 +68,7 @@ export function tryCreateMatch(queue) {
 
 /**
  * Repeatedly try to create matches until none can be made.
- * @param {typeof queue} queue
+ * @param {Array<{id: string, name: string, category: string}>} queue
  * @returns {{ matches: Array<{ team1: any[], team2: any[] }>, remainingQueue: typeof queue }}
  */
 export function createMatchesFromQueue(queue) {
@@ -83,6 +83,35 @@ export function createMatchesFromQueue(queue) {
   }
 
   return { matches, remainingQueue: current };
+}
+
+/**
+ * Get set of available court ids (1-based). Used court ids come from matches.
+ * @param {Array<{ courtId: number }>} matches
+ * @param {number} courtCount
+ * @returns {number[]}
+ */
+export function getAvailableCourts(matches, courtCount) {
+  const used = new Set(matches.map((m) => m.courtId));
+  const available = [];
+  for (let i = 1; i <= courtCount; i++) {
+    if (!used.has(i)) available.push(i);
+  }
+  return available;
+}
+
+/**
+ * Check if we can create at least one match: have an available court and enough queue players.
+ * @param {Array<{id: string, name: string, category: string}>} queueAsPlayers
+ * @param {Array<{ courtId: number }>} matches
+ * @param {number} courtCount
+ * @returns {boolean}
+ */
+export function canCreateMatch(queueAsPlayers, matches, courtCount) {
+  const available = getAvailableCourts(matches, courtCount);
+  if (available.length === 0) return false;
+  const { match } = tryCreateMatch(queueAsPlayers);
+  return !!match;
 }
 
 export { CATEGORIES };

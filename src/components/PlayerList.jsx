@@ -1,7 +1,7 @@
 export default function PlayerList({ players, onRemove }) {
   if (!players.length) {
     return (
-      <p className="text-sm text-gray-500">No players in queue. Add players above.</p>
+      <p className="text-sm text-slate-500">No players yet. Add players above.</p>
     );
   }
 
@@ -10,16 +10,16 @@ export default function PlayerList({ players, onRemove }) {
       {players.map((p, i) => (
         <li
           key={p.id}
-          className="flex items-center justify-between rounded border border-gray-200 bg-white px-3 py-2 shadow-sm"
+          className="flex items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-sm transition hover:shadow-md"
         >
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 w-6">{i + 1}.</span>
-            <span className="font-medium text-gray-900">{p.name}</span>
+            <span className="w-6 text-sm text-slate-400">{i + 1}.</span>
+            <span className="font-medium text-slate-900">{p.name}</span>
             <span
-              className={`rounded px-2 py-0.5 text-xs font-medium ${
+              className={`rounded-lg px-2 py-0.5 text-xs font-medium ${
                 p.category === 'Beginners'
                   ? 'bg-amber-100 text-amber-800'
-                  : 'bg-slate-100 text-slate-800'
+                  : 'bg-slate-100 text-slate-700'
               }`}
             >
               {p.category}
@@ -29,7 +29,7 @@ export default function PlayerList({ players, onRemove }) {
             <button
               type="button"
               onClick={() => onRemove(p.id)}
-              className="text-sm text-gray-500 hover:text-red-600 focus:outline-none"
+              className="text-sm text-slate-400 hover:text-red-500 focus:outline-none"
             >
               Remove
             </button>
