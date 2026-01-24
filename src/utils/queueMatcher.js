@@ -1,16 +1,16 @@
 /**
  * Queue matcher for badminton doubles.
- * Match types (priority order):
- * 1. 2 Beginners vs 2 Beginners
- * 2. 1 Beginner + 1 Intermediate vs 1 Beginner + 1 Intermediate
- * 3. 2 Intermediate vs 2 Intermediate
+ * Match types (randomly selected from available options):
+ * - 2 Beginners vs 2 Beginners
+ * - 2 Intermediate vs 2 Intermediate
+ * - 1 Beginner + 1 Intermediate vs 1 Beginner + 1 Intermediate
  */
 
 const CATEGORIES = { BEGINNERS: 'Beginners', INTERMEDIATE: 'Intermediate' };
 
 /**
  * Picks players in queue order (caller must sort by games played ascending first).
- * No shuffle — preserves priority so low-games players get matched first.
+ * Randomly selects from all available match types (no priority).
  *
  * @param {Array<{id: string, name: string, category: string, gamesPlayed?: number}>} queue
  * @returns {{ match: { team1: [player, player], team2: [player, player] } | null, remainingQueue: typeof queue }}
@@ -20,42 +20,51 @@ export function tryCreateMatch(queue) {
   const beginners = remainingQueue.filter((p) => p.category === CATEGORIES.BEGINNERS);
   const intermediates = remainingQueue.filter((p) => p.category === CATEGORIES.INTERMEDIATE);
 
-  // 1. 2 Beginners vs 2 Beginners — take first 4 by priority (low games first)
+  // Collect all possible match types
+  const possibleMatches = [];
+
+  // 1. 2 Beginners vs 2 Beginners
   if (beginners.length >= 4) {
     const team1 = beginners.slice(0, 2);
     const team2 = beginners.slice(2, 4);
     const ids = new Set([...team1, ...team2].map((p) => p.id));
-    return {
+    possibleMatches.push({
       match: { team1, team2 },
       remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
-    };
+    });
   }
 
-  // 2. 1 Beginner + 1 Intermediate vs 1 Beginner + 1 Intermediate
+  // 2. 2 Intermediate vs 2 Intermediate
+  if (intermediates.length >= 4) {
+    const team1 = intermediates.slice(0, 2);
+    const team2 = intermediates.slice(2, 4);
+    const ids = new Set([...team1, ...team2].map((p) => p.id));
+    possibleMatches.push({
+      match: { team1, team2 },
+      remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
+    });
+  }
+
+  // 3. 1 Beginner + 1 Intermediate vs 1 Beginner + 1 Intermediate
   if (beginners.length >= 2 && intermediates.length >= 2) {
     const b = beginners.slice(0, 2);
     const i = intermediates.slice(0, 2);
     const team1 = [b[0], i[0]];
     const team2 = [b[1], i[1]];
     const ids = new Set([...team1, ...team2].map((p) => p.id));
-    return {
+    possibleMatches.push({
       match: { team1, team2 },
       remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
-    };
+    });
   }
 
-  // 3. 2 Intermediate vs 2 Intermediate — take first 4 by priority
-  if (intermediates.length >= 4) {
-    const team1 = intermediates.slice(0, 2);
-    const team2 = intermediates.slice(2, 4);
-    const ids = new Set([...team1, ...team2].map((p) => p.id));
-    return {
-      match: { team1, team2 },
-      remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
-    };
+  // Randomly select one from available options
+  if (possibleMatches.length === 0) {
+    return { match: null, remainingQueue };
   }
 
-  return { match: null, remainingQueue };
+  const randomIndex = Math.floor(Math.random() * possibleMatches.length);
+  return possibleMatches[randomIndex];
 }
 
 /**
