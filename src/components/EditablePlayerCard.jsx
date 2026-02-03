@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CATEGORIES } from '../utils/queueMatcher';
 
 function StatusBadge({ status }) {
@@ -14,13 +14,21 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function EditablePlayerCard({ player, playingIds, onUpdate, onRemove }) {
+export default function EditablePlayerCard({ player, playingIds, onUpdate, onRemove, hideStatus = false }) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(player.name);
   const [category, setCategory] = useState(player.category);
 
+  // Sync local state when player prop changes
+  useEffect(() => {
+    if (!isEditing) {
+      setName(player.name);
+      setCategory(player.category);
+    }
+  }, [player.name, player.category, isEditing]);
+
   const handleSave = () => {
-    if (name.trim()) {
+    if (name.trim() && onUpdate) {
       onUpdate(player.id, { name: name.trim(), category });
       setIsEditing(false);
     }
@@ -96,23 +104,29 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
           >
             {player.category}
           </span>
-          <StatusBadge status={playingIds.has(player.id) ? 'playing' : 'waiting'} />
-          <span className="text-xs text-slate-500" title="Games played">
-            {player.gamesPlayed} game{player.gamesPlayed !== 1 ? 's' : ''}
-          </span>
+          {!hideStatus && (
+            <>
+              <StatusBadge status={playingIds.has(player.id) ? 'playing' : 'waiting'} />
+              <span className="text-xs text-slate-500" title="Games played">
+                {player.gamesPlayed} game{player.gamesPlayed !== 1 ? 's' : ''}
+              </span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="rounded p-1.5 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            aria-label="Update"
-            title="Update"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
+          {onUpdate && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="rounded p-1.5 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              aria-label="Update"
+              title="Update"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          )}
           {onRemove && (
             <button
               type="button"

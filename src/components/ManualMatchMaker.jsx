@@ -13,8 +13,22 @@ function CategoryBadge({ category }) {
   );
 }
 
-export default function ManualMatchMaker({ players, playingIds, matches, courts, onCreate, onUpdate, editMatchId, onClose }) {
+export default function ManualMatchMaker({
+  players,
+  playingIds,
+  matches,
+  courts,
+  onCreate,
+  onCreateAdvance,
+  onUpdate,
+  editMatchId,
+  onClose,
+  mode = 'manual',
+  reservedIds = [],
+}) {
   const editMatch = useMemo(() => editMatchId ? matches.find((m) => m.id === editMatchId) : null, [matches, editMatchId]);
+  const isAdvance = mode === 'advance';
+  const reservedSet = useMemo(() => new Set(reservedIds), [reservedIds]);
   
   const [selectedTeam1, setSelectedTeam1] = useState([]);
   const [selectedTeam2, setSelectedTeam2] = useState([]);
@@ -33,9 +47,9 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
       // When editing, show all players but mark those playing in other matches
       return players;
     }
-    // When creating, only show waiting players
-    return players.filter((p) => !playingIds.has(p.id));
-  }, [players, playingIds, editMatch]);
+    // When creating, only show waiting players (excluding reserved)
+    return players.filter((p) => !playingIds.has(p.id) && !reservedSet.has(p.id));
+  }, [players, playingIds, editMatch, reservedSet]);
 
   const availableCourts = useMemo(() => {
     const used = new Set(matches.filter((m) => m.id !== editMatchId).map((m) => m.courtId));
@@ -44,6 +58,10 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
 
   // Initialize selectedCourt to first available court when creating (not editing)
   useEffect(() => {
+    if (isAdvance) {
+      setSelectedCourt(null);
+      return;
+    }
     if (!editMatch && availableCourts.length > 0) {
       // Only update if current selection is not in available courts
       if (!availableCourts.includes(selectedCourt)) {
@@ -53,7 +71,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
       // If no courts available, set to null/undefined to disable submit
       setSelectedCourt(null);
     }
-  }, [availableCourts, editMatch, selectedCourt]);
+  }, [availableCourts, editMatch, selectedCourt, isAdvance]);
 
   const togglePlayer = (playerId, team) => {
     const isSelected = team === 1 ? selectedTeam1.includes(playerId) : selectedTeam2.includes(playerId);
@@ -82,9 +100,11 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
   };
 
   const handleSubmit = () => {
-    if (selectedTeam1.length === 2 && selectedTeam2.length === 2 && selectedCourt) {
+    if (selectedTeam1.length === 2 && selectedTeam2.length === 2) {
       if (editMatchId && onUpdate) {
         onUpdate(editMatchId, selectedTeam1, selectedTeam2, selectedCourt);
+      } else if (isAdvance) {
+        onCreateAdvance?.(selectedTeam1, selectedTeam2);
       } else {
         onCreate(selectedTeam1, selectedTeam2, selectedCourt);
       }
@@ -92,12 +112,10 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
     }
   };
 
-  const canSubmit = 
-    selectedTeam1.length === 2 && 
-    selectedTeam2.length === 2 && 
-    selectedCourt && 
-    availableCourts.length > 0 &&
-    availableCourts.includes(selectedCourt);
+  const canSubmit =
+    selectedTeam1.length === 2 &&
+    selectedTeam2.length === 2 &&
+    (isAdvance || (selectedCourt && availableCourts.length > 0 && availableCourts.includes(selectedCourt)));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -105,7 +123,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
         <div className="border-b border-slate-200 p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-slate-900">
-              {editMatchId ? 'Edit Match' : 'Manual Match Creation'}
+              {editMatchId ? 'Edit Match' : isAdvance ? 'Queue Match' : 'Manual Match Creation'}
             </h2>
             <button
               type="button"
@@ -116,29 +134,35 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
             </button>
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            {editMatchId ? 'Update players and court for this match.' : 'Select 2 players for each team and choose a court.'}
+            {editMatchId
+              ? 'Update players and court for this match.'
+              : isAdvance
+              ? 'Select 2 players for each team. Court is assigned when moved to matches.'
+              : 'Select 2 players for each team and choose a court.'}
           </p>
         </div>
         
         <div className="max-h-[70vh] overflow-y-auto p-6">
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Court</label>
-            {availableCourts.length > 0 ? (
-              <select
-                value={selectedCourt}
-                onChange={(e) => setSelectedCourt(parseInt(e.target.value, 10))}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              >
-                {availableCourts.map((courtId) => (
-                  <option key={courtId} value={courtId}>
-                    Court {courtId}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="text-sm text-amber-600">No available courts. Complete or cancel existing matches first.</p>
-            )}
-          </div>
+          {!isAdvance && (
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-slate-700">Court</label>
+              {availableCourts.length > 0 ? (
+                <select
+                  value={selectedCourt}
+                  onChange={(e) => setSelectedCourt(parseInt(e.target.value, 10))}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  {availableCourts.map((courtId) => (
+                    <option key={courtId} value={courtId}>
+                      Court {courtId}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-amber-600">No available courts. Complete or cancel existing matches first.</p>
+              )}
+            </div>
+          )}
 
           <div className="grid gap-6 md:grid-cols-2">
             <div>
@@ -149,17 +173,19 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                 {availablePlayers.map((p) => {
                   const isSelected = selectedTeam1.includes(p.id);
                   const isInOtherTeam = selectedTeam2.includes(p.id);
-                  const isPlayingElsewhere = editMatch && !editMatch.team1.some((t) => t.id === p.id) && !editMatch.team2.some((t) => t.id === p.id) && playingIds.has(p.id);
+                  const isInEditMatch = editMatch && [...editMatch.team1, ...editMatch.team2].some((t) => t.id === p.id);
+                  const isPlayingElsewhere = editMatch && !isInEditMatch && playingIds.has(p.id);
+                  const isReservedElsewhere = editMatch && !isInEditMatch && reservedSet.has(p.id);
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => togglePlayer(p.id, 1)}
-                      disabled={isInOtherTeam || (!isSelected && selectedTeam1.length >= 2) || isPlayingElsewhere}
+                      disabled={isInOtherTeam || (!isSelected && selectedTeam1.length >= 2) || isPlayingElsewhere || isReservedElsewhere}
                       className={`w-full rounded-xl border px-4 py-2.5 text-left transition ${
                         isSelected
                           ? 'border-emerald-500 bg-emerald-50'
-                          : isInOtherTeam || isPlayingElsewhere
+                          : isInOtherTeam || isPlayingElsewhere || isReservedElsewhere
                           ? 'border-slate-200 bg-slate-100 opacity-50'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                       } disabled:cursor-not-allowed`}
@@ -172,6 +198,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
                           </span>
                           {isPlayingElsewhere && <span className="text-xs text-amber-600">(Playing)</span>}
+                          {isReservedElsewhere && <span className="text-xs text-amber-600">(Queued)</span>}
                         </div>
                         {isSelected && <span className="text-emerald-600">✓</span>}
                       </div>
@@ -189,17 +216,19 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                 {availablePlayers.map((p) => {
                   const isSelected = selectedTeam2.includes(p.id);
                   const isInOtherTeam = selectedTeam1.includes(p.id);
-                  const isPlayingElsewhere = editMatch && !editMatch.team1.some((t) => t.id === p.id) && !editMatch.team2.some((t) => t.id === p.id) && playingIds.has(p.id);
+                  const isInEditMatch = editMatch && [...editMatch.team1, ...editMatch.team2].some((t) => t.id === p.id);
+                  const isPlayingElsewhere = editMatch && !isInEditMatch && playingIds.has(p.id);
+                  const isReservedElsewhere = editMatch && !isInEditMatch && reservedSet.has(p.id);
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => togglePlayer(p.id, 2)}
-                      disabled={isInOtherTeam || (!isSelected && selectedTeam2.length >= 2) || isPlayingElsewhere}
+                      disabled={isInOtherTeam || (!isSelected && selectedTeam2.length >= 2) || isPlayingElsewhere || isReservedElsewhere}
                       className={`w-full rounded-xl border px-4 py-2.5 text-left transition ${
                         isSelected
                           ? 'border-blue-500 bg-blue-50'
-                          : isInOtherTeam || isPlayingElsewhere
+                          : isInOtherTeam || isPlayingElsewhere || isReservedElsewhere
                           ? 'border-slate-200 bg-slate-100 opacity-50'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                       } disabled:cursor-not-allowed`}
@@ -212,6 +241,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
                           </span>
                           {isPlayingElsewhere && <span className="text-xs text-amber-600">(Playing)</span>}
+                          {isReservedElsewhere && <span className="text-xs text-amber-600">(Queued)</span>}
                         </div>
                         {isSelected && <span className="text-blue-600">✓</span>}
                       </div>
@@ -238,7 +268,7 @@ export default function ManualMatchMaker({ players, playingIds, matches, courts,
               disabled={!canSubmit}
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {editMatchId ? 'Update Match' : 'Create Match'}
+              {editMatchId ? 'Update Match' : isAdvance ? 'Queue Match' : 'Create Match'}
             </button>
           </div>
         </div>

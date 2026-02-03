@@ -11,7 +11,7 @@ function CategoryBadge({ category }) {
   );
 }
 
-export default function PlayerSummary({ removedPlayers }) {
+export default function PlayerSummary({ removedPlayers, onRestore }) {
   if (!removedPlayers || removedPlayers.length === 0) {
     return (
       <p className="text-sm text-slate-500">No players have been removed yet.</p>
@@ -42,7 +42,17 @@ export default function PlayerSummary({ removedPlayers }) {
                 {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''} played
               </span>
             </div>
-            <span className="text-xs font-medium text-slate-400">Removed</span>
+            {onRestore ? (
+              <button
+                type="button"
+                onClick={() => onRestore(p.id)}
+                className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              >
+                Undo
+              </button>
+            ) : (
+              <span className="text-xs font-medium text-slate-400">Removed</span>
+            )}
           </div>
         </div>
       ))}
