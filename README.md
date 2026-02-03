@@ -1,6 +1,6 @@
-# Badminton Doubles Queue
+# Intelligent Queueing App
 
-A web app for managing badminton doubles matches. Add players by category (Beginners / Intermediate), set the number of courts, then queue matches that respect skill-based pairing rules.
+A badminton-oriented web app for managing doubles matches. Add players by category (Beginners / Intermediate), set the number of courts, then queue matches that respect skill-based pairing rules.
 
 ## Features
 

@@ -629,8 +629,11 @@ export default function App() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                Badminton doubles queue
+                Intelligent Queueing App
               </h1>
+              <p className="mt-1 text-sm font-medium uppercase tracking-wide text-slate-500">
+                Badminton Queueing app for doubles
+              </p>
               <div className="mt-2 flex items-center gap-2">
                 <span
                   className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
