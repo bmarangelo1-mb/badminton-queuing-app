@@ -833,7 +833,7 @@ export default function App() {
         </div>
       </div>
       <footer className="mx-auto mt-auto w-full max-w-3xl px-4 pb-6 pt-4 text-center text-sm text-slate-500 sm:px-6">
-        This app created by Mar B
+        This app created by Mar B for Bunal Kada Martes Badminton Group
       </footer>
       {showEndQueueSummary && (
         <EndQueueSummary
