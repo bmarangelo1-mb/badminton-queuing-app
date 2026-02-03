@@ -170,8 +170,25 @@ function reducer(state, action) {
         team1: m.team1.map((p) => ({ ...p, gamesPlayed: 0 })),
         team2: m.team2.map((p) => ({ ...p, gamesPlayed: 0 })),
       }));
-      const removedPlayers = state.removedPlayers.map((p) => ({ ...p, gamesPlayed: 0 }));
-      return { ...state, players, matches, advanceQueue, removedPlayers };
+      const restoredPlayers = state.removedPlayers
+        .map((p) => ({ ...p, gamesPlayed: 0 }))
+        .filter((p) => !players.some((existing) => existing.id === p.id));
+      const playersWithRestored = [...players, ...restoredPlayers];
+      const queue =
+        state.phase === 'active'
+          ? [
+              ...state.queue,
+              ...restoredPlayers.map((p) => p.id).filter((id) => !state.queue.includes(id)),
+            ]
+          : state.queue;
+      return {
+        ...state,
+        players: playersWithRestored,
+        queue,
+        matches,
+        advanceQueue,
+        removedPlayers: [],
+      };
     }
 
     case 'UPDATE_MATCH': {
@@ -856,7 +873,7 @@ export default function App() {
       <ConfirmDialog
         open={confirmResetGamesOpen}
         title="Reset all games?"
-        message="This will reset games played to 0 for all players."
+        message="This will reset games played to 0 for all players and restore any removed players."
         confirmLabel="Reset games"
         cancelLabel="Keep"
         variant="danger"
