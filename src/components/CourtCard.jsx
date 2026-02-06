@@ -34,7 +34,7 @@ export default function CourtCard({
   };
 
   return (
-    <div className="flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <div className="flex min-w-0 flex-col rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
         {isEditing ? (
           <input
