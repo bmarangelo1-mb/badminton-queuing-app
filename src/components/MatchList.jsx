@@ -1,39 +1,46 @@
-import MatchCard from './MatchCard';
+import CourtCard from './CourtCard';
+import AddCourtCard from './AddCourtCard';
 
-export default function MatchList({ matches, courts, onCompleteMatch, onCancelMatch, onEditMatch }) {
-  if (!matches.length) {
-    return (
-      <p className="text-sm text-slate-500">
-        No active matches. Click “Create next match” when you have at least 4 waiting players and a free court.
-      </p>
-    );
-  }
-
-  const byCourt = Array.from({ length: courts }, (_, i) => ({
-    courtId: i + 1,
-    match: matches.find((m) => m.courtId === i + 1),
-  }));
+export default function MatchList({
+  matches,
+  courts,
+  canCreate,
+  availableCourtIds,
+  onAddCourt,
+  onEditCourtName,
+  onRemoveCourt,
+  onManualMatch,
+  onCreateNextMatch,
+  onCompleteMatch,
+  onCancelMatch,
+  onEditMatch,
+}) {
+  const matchByCourtId = new Map(matches.map((m) => [m.courtId, m]));
 
   return (
     <div className="space-y-3">
-      {byCourt.map(({ courtId, match: m }) =>
-        m ? (
-          <MatchCard
-            key={m.id}
-            match={m}
-            onComplete={() => onCompleteMatch(m.id)}
-            onCancel={onCancelMatch ? () => onCancelMatch(m.id) : undefined}
-            onEdit={onEditMatch ? () => onEditMatch(m.id) : undefined}
+      {courts.map((court) => {
+        const match = matchByCourtId.get(court.id) || null;
+        const canCreateNextMatch = !match && availableCourtIds.includes(court.id) && canCreate;
+        const canRemoveCourt = courts.length > 1 && !match;
+        return (
+          <CourtCard
+            key={court.id}
+            court={court}
+            match={match}
+            canCreateNextMatch={canCreateNextMatch}
+            canRemoveCourt={canRemoveCourt}
+            onEditCourtName={onEditCourtName}
+            onRemoveCourt={onRemoveCourt}
+            onManualMatch={onManualMatch}
+            onCreateNextMatch={onCreateNextMatch}
+            onCompleteMatch={match ? () => onCompleteMatch(match.id) : undefined}
+            onCancelMatch={match && onCancelMatch ? () => onCancelMatch(match.id) : undefined}
+            onEditMatch={match && onEditMatch ? () => onEditMatch(match.id) : undefined}
           />
-        ) : (
-          <div
-            key={`empty-${courtId}`}
-            className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6 text-center text-sm text-slate-400"
-          >
-            Court {courtId} — available
-          </div>
-        )
-      )}
+        );
+      })}
+      <AddCourtCard onAddCourt={onAddCourt} />
     </div>
   );
 }

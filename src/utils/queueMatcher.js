@@ -186,18 +186,14 @@ export function createMatchesFromQueue(queue) {
 }
 
 /**
- * Get set of available court ids (1-based). Used court ids come from matches.
- * @param {Array<{ courtId: number }>} matches
- * @param {number} courtCount
- * @returns {number[]}
+ * Get set of available court ids. Used court ids come from matches.
+ * @param {Array<{ courtId: string }>} matches
+ * @param {Array<{ id: string, name: string }>} courts
+ * @returns {string[]}
  */
-export function getAvailableCourts(matches, courtCount) {
+export function getAvailableCourts(matches, courts) {
   const used = new Set(matches.map((m) => m.courtId));
-  const available = [];
-  for (let i = 1; i <= courtCount; i++) {
-    if (!used.has(i)) available.push(i);
-  }
-  return available;
+  return courts.filter((court) => !used.has(court.id)).map((court) => court.id);
 }
 
 /**
@@ -205,12 +201,12 @@ export function getAvailableCourts(matches, courtCount) {
  * Uses allowUnbalancedIfOnlyOption when there's an available court so 3-of-one matches are allowed
  * only when they're the only option.
  * @param {Array<{id: string, name: string, category: string}>} queueAsPlayers
- * @param {Array<{ courtId: number }>} matches
- * @param {number} courtCount
+ * @param {Array<{ courtId: string }>} matches
+ * @param {Array<{ id: string, name: string }>} courts
  * @returns {boolean}
  */
-export function canCreateMatch(queueAsPlayers, matches, courtCount) {
-  const available = getAvailableCourts(matches, courtCount);
+export function canCreateMatch(queueAsPlayers, matches, courts) {
+  const available = getAvailableCourts(matches, courts);
   if (available.length === 0) return false;
   const { match } = tryCreateMatch(queueAsPlayers, {
     allowUnbalancedIfOnlyOption: true,

@@ -25,14 +25,20 @@ export default function ManualMatchMaker({
   onClose,
   mode = 'manual',
   reservedIds = [],
+  preselectedCourtId = null,
 }) {
   const editMatch = useMemo(() => editMatchId ? matches.find((m) => m.id === editMatchId) : null, [matches, editMatchId]);
   const isAdvance = mode === 'advance';
   const reservedSet = useMemo(() => new Set(reservedIds), [reservedIds]);
+  const courtNameById = useMemo(
+    () => new Map(courts.map((court) => [court.id, court.name])),
+    [courts]
+  );
+  const lockCourtSelection = !!preselectedCourtId && !editMatchId && !isAdvance;
   
   const [selectedTeam1, setSelectedTeam1] = useState([]);
   const [selectedTeam2, setSelectedTeam2] = useState([]);
-  const [selectedCourt, setSelectedCourt] = useState(1);
+  const [selectedCourt, setSelectedCourt] = useState(null);
 
   useEffect(() => {
     if (editMatch) {
@@ -53,13 +59,17 @@ export default function ManualMatchMaker({
 
   const availableCourts = useMemo(() => {
     const used = new Set(matches.filter((m) => m.id !== editMatchId).map((m) => m.courtId));
-    return Array.from({ length: courts }, (_, i) => i + 1).filter((id) => !used.has(id));
+    return courts.filter((court) => !used.has(court.id)).map((court) => court.id);
   }, [matches, courts, editMatchId]);
 
   // Initialize selectedCourt to first available court when creating (not editing)
   useEffect(() => {
     if (isAdvance) {
       setSelectedCourt(null);
+      return;
+    }
+    if (lockCourtSelection) {
+      setSelectedCourt(preselectedCourtId);
       return;
     }
     if (!editMatch && availableCourts.length > 0) {
@@ -71,7 +81,7 @@ export default function ManualMatchMaker({
       // If no courts available, set to null/undefined to disable submit
       setSelectedCourt(null);
     }
-  }, [availableCourts, editMatch, selectedCourt, isAdvance]);
+  }, [availableCourts, editMatch, selectedCourt, isAdvance, lockCourtSelection, preselectedCourtId]);
 
   const togglePlayer = (playerId, team) => {
     const isSelected = team === 1 ? selectedTeam1.includes(playerId) : selectedTeam2.includes(playerId);
@@ -147,17 +157,23 @@ export default function ManualMatchMaker({
             <div className="mb-4">
               <label className="mb-2 block text-sm font-medium text-slate-700">Court</label>
               {availableCourts.length > 0 ? (
-                <select
-                  value={selectedCourt}
-                  onChange={(e) => setSelectedCourt(parseInt(e.target.value, 10))}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                >
-                  {availableCourts.map((courtId) => (
-                    <option key={courtId} value={courtId}>
-                      Court {courtId}
-                    </option>
-                  ))}
-                </select>
+                lockCourtSelection ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+                    {courtNameById.get(preselectedCourtId) || 'Court'}
+                  </div>
+                ) : (
+                  <select
+                    value={selectedCourt || ''}
+                    onChange={(e) => setSelectedCourt(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    {availableCourts.map((courtId) => (
+                      <option key={courtId} value={courtId}>
+                        {courtNameById.get(courtId) || courtId}
+                      </option>
+                    ))}
+                  </select>
+                )
               ) : (
                 <p className="text-sm text-amber-600">No available courts. Complete or cancel existing matches first.</p>
               )}

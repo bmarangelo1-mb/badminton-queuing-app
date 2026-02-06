@@ -8,9 +8,7 @@ import ManualMatchMaker from './components/ManualMatchMaker';
 import ConfirmDialog from './components/ConfirmDialog';
 import MatchList from './components/MatchList';
 import AdvanceQueueList from './components/AdvanceQueueList';
-import CourtConfig from './components/CourtConfig';
 import StartQueueButton from './components/StartQueueButton';
-import CreateMatchButton from './components/CreateMatchButton';
 import {
   tryCreateMatch,
   getAvailableCourts,
@@ -20,10 +18,38 @@ import {
 const STORAGE_KEY = 'badminton-queue-state';
 
 function getInitialState() {
+  const buildCourtsFromCount = (count) => {
+    const total = Math.max(1, Math.floor(Number.isFinite(count) ? count : 1));
+    return Array.from({ length: total }, (_, i) => ({
+      id: `court-${i + 1}`,
+      name: `Court ${i + 1}`,
+    }));
+  };
+
+  const normalizeCourts = (courtsValue) => {
+    if (Array.isArray(courtsValue)) {
+      return courtsValue.map((court, index) => ({
+        id: court?.id || `court-${index + 1}`,
+        name: (court?.name || `Court ${index + 1}`).trim() || `Court ${index + 1}`,
+      }));
+    }
+    if (typeof courtsValue === 'number') {
+      return buildCourtsFromCount(courtsValue);
+    }
+    return buildCourtsFromCount(1);
+  };
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
+      const courts = normalizeCourts(parsed.courts);
+      const matches = (parsed.matches || []).map((m) => {
+        if (typeof m.courtId === 'number') {
+          return { ...m, courtId: `court-${m.courtId}` };
+        }
+        return m;
+      });
       // Calculate next IDs from existing data to avoid conflicts
       const playerIds = [
         ...(parsed.players || []).map((p) => {
@@ -35,17 +61,25 @@ function getInitialState() {
           return match ? parseInt(match[1], 10) : 0;
         }),
       ];
-      const matchIds = (parsed.matches || []).map((m) => {
+      const matchIds = matches.map((m) => {
         const match = m.id?.match(/^m-(\d+)$/);
         return match ? parseInt(match[1], 10) : 0;
       });
       const maxPlayerId = playerIds.length > 0 ? Math.max(0, ...playerIds) : 0;
       const maxMatchId = matchIds.length > 0 ? Math.max(0, ...matchIds) : 0;
+      const courtIds = courts.map((court) => {
+        const match = court.id?.match(/^court-(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+      const maxCourtId = courtIds.length > 0 ? Math.max(0, ...courtIds) : 0;
       // Set global counters
       window.__nextPlayerId = maxPlayerId + 1;
       window.__nextMatchId = maxMatchId + 1;
+      window.__nextCourtId = maxCourtId + 1;
       return {
         ...parsed,
+        courts,
+        matches,
         advanceQueue: parsed.advanceQueue || [],
       };
     }
@@ -54,7 +88,7 @@ function getInitialState() {
   }
   return {
     phase: 'setup',
-    courts: 1,
+    courts: [{ id: 'court-1', name: 'Court 1' }],
     players: [],
     queue: [],
     matches: [],
@@ -72,15 +106,40 @@ if (!window.__nextPlayerId) {
 if (!window.__nextMatchId) {
   window.__nextMatchId = 1;
 }
+if (!window.__nextCourtId) {
+  window.__nextCourtId = 2;
+}
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'SET_COURTS': {
-      const newCount = Math.max(1, Math.min(10, action.payload));
-      // Don't allow reducing courts below number of active matches
-      const minCourts = state.matches.length;
-      const finalCount = Math.max(newCount, minCourts);
-      return { ...state, courts: finalCount };
+    case 'ADD_COURT': {
+      const newCourt = {
+        id: `court-${window.__nextCourtId++}`,
+        name: `Court ${state.courts.length + 1}`,
+      };
+      return { ...state, courts: [...state.courts, newCourt] };
+    }
+
+    case 'UPDATE_COURT': {
+      const { courtId, name } = action.payload;
+      const courts = state.courts.map((court, index) => {
+        if (court.id !== courtId) return court;
+        const trimmed = name.trim();
+        return {
+          ...court,
+          name: trimmed || `Court ${index + 1}`,
+        };
+      });
+      return { ...state, courts };
+    }
+
+    case 'REMOVE_COURT': {
+      const courtId = action.payload;
+      if (state.courts.length <= 1) return state;
+      const hasMatch = state.matches.some((m) => m.courtId === courtId);
+      if (hasMatch) return state;
+      const courts = state.courts.filter((c) => c.id !== courtId);
+      return { ...state, courts };
     }
 
     case 'ADD_PLAYER': {
@@ -241,6 +300,11 @@ function reducer(state, action) {
     case 'CREATE_MATCH': {
       const available = getAvailableCourts(state.matches, state.courts);
       if (available.length === 0) return state;
+      const requestedCourtId = action.payload?.courtId;
+      const courtId = requestedCourtId && available.includes(requestedCourtId)
+        ? requestedCourtId
+        : available[0];
+      if (!courtId) return state;
       // Get all waiting players (not currently playing) and sort by games played (ascending)
       const reservedIds = new Set(
         state.advanceQueue.flatMap((m) => [...m.team1, ...m.team2].map((p) => p.id))
@@ -263,7 +327,6 @@ function reducer(state, action) {
         randomizePartners: everyonePlayedOnce,
       });
       if (!match) return state;
-      const courtId = available[0];
       const newMatch = {
         id: `m-${window.__nextMatchId++}`,
         courtId,
@@ -373,17 +436,21 @@ function reducer(state, action) {
     }
 
     case 'MOVE_ADVANCE_MATCH': {
-      const { id } = action.payload || {};
+      const { id, courtId: requestedCourtId } = action.payload || {};
       if (!id) return state;
       const available = getAvailableCourts(state.matches, state.courts);
       if (available.length === 0) return state;
+      const courtId =
+        requestedCourtId && available.includes(requestedCourtId)
+          ? requestedCourtId
+          : available[0];
       const index = state.advanceQueue.findIndex((m) => m.id === id);
       if (index === -1) return state;
       const nextMatch = state.advanceQueue[index];
       const rest = state.advanceQueue.filter((m) => m.id !== id);
       const newMatch = {
         id: `m-${window.__nextMatchId++}`,
-        courtId: available[0],
+        courtId,
         team1: nextMatch.team1,
         team2: nextMatch.team2,
         createdAt: Date.now(),
@@ -411,7 +478,7 @@ function reducer(state, action) {
       if (state.phase !== 'setup') return state;
       return {
         ...state,
-        courts: 1,
+        courts: [{ id: 'court-1', name: 'Court 1' }],
         players: [],
         queue: [],
         matches: [],
@@ -424,6 +491,7 @@ function reducer(state, action) {
       // Reset to initial state
       window.__nextPlayerId = 1;
       window.__nextMatchId = 1;
+      window.__nextCourtId = 2;
       try {
         localStorage.removeItem(STORAGE_KEY);
       } catch (e) {
@@ -431,7 +499,7 @@ function reducer(state, action) {
       }
       return {
         phase: 'setup',
-        courts: 1,
+        courts: [{ id: 'court-1', name: 'Court 1' }],
         players: [],
         queue: [],
         matches: [],
@@ -451,10 +519,12 @@ export default function App() {
   const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
   const [showManualMatchMaker, setShowManualMatchMaker] = useState(false);
   const [editingMatchId, setEditingMatchId] = useState(null);
+  const [preselectedCourtId, setPreselectedCourtId] = useState(null);
   const [matchMakerMode, setMatchMakerMode] = useState('manual');
   const [confirmCancelMatchId, setConfirmCancelMatchId] = useState(null);
   const [confirmResetGamesOpen, setConfirmResetGamesOpen] = useState(false);
   const [confirmRemovePlayerId, setConfirmRemovePlayerId] = useState(null);
+  const [confirmRemoveCourtId, setConfirmRemoveCourtId] = useState(null);
   const [setupResetKey, setSetupResetKey] = useState(0);
 
   const reservedIdList = useMemo(
@@ -491,7 +561,7 @@ export default function App() {
     [waitingPlayers, matches, courts]
   );
 
-  const availableCourts = useMemo(
+  const availableCourtIds = useMemo(
     () => getAvailableCourts(matches, courts),
     [matches, courts]
   );
@@ -504,11 +574,10 @@ export default function App() {
   const pendingRemovePlayer = confirmRemovePlayerId
     ? players.find((p) => p.id === confirmRemovePlayerId)
     : null;
+  const pendingRemoveCourt = confirmRemoveCourtId
+    ? courts.find((c) => c.id === confirmRemoveCourtId)
+    : null;
   const canQueueAdvance = waitingPlayers.length >= 4;
-
-  const setCourts = useCallback((n) => {
-    dispatch({ type: 'SET_COURTS', payload: n });
-  }, []);
 
   const addPlayer = useCallback(({ name, category }) => {
     dispatch({ type: 'ADD_PLAYER', payload: { name, category } });
@@ -541,8 +610,8 @@ export default function App() {
     dispatch({ type: 'START_QUEUE' });
   }, []);
 
-  const createMatch = useCallback(() => {
-    dispatch({ type: 'CREATE_MATCH' });
+  const createMatch = useCallback((courtId) => {
+    dispatch({ type: 'CREATE_MATCH', payload: { courtId } });
   }, []);
 
   const completeMatch = useCallback((matchId) => {
@@ -581,8 +650,8 @@ export default function App() {
     dispatch({ type: 'CREATE_ADVANCE_MATCH', payload: { team1Ids, team2Ids } });
   }, []);
 
-  const moveAdvanceMatch = useCallback((id) => {
-    dispatch({ type: 'MOVE_ADVANCE_MATCH', payload: { id } });
+  const moveAdvanceMatch = useCallback((id, courtId) => {
+    dispatch({ type: 'MOVE_ADVANCE_MATCH', payload: { id, courtId } });
   }, []);
 
   const cancelAdvanceMatch = useCallback((id) => {
@@ -611,6 +680,29 @@ export default function App() {
     dispatch({ type: 'RESET_SETUP' });
     setSetupResetKey((k) => k + 1);
   }, [phase]);
+
+  const addCourt = useCallback(() => {
+    dispatch({ type: 'ADD_COURT' });
+  }, []);
+
+  const updateCourt = useCallback((courtId, name) => {
+    dispatch({ type: 'UPDATE_COURT', payload: { courtId, name } });
+  }, []);
+
+  const requestRemoveCourt = useCallback((courtId) => {
+    setConfirmRemoveCourtId(courtId);
+  }, []);
+
+  const confirmRemoveCourt = useCallback(() => {
+    if (confirmRemoveCourtId) {
+      dispatch({ type: 'REMOVE_COURT', payload: confirmRemoveCourtId });
+      setConfirmRemoveCourtId(null);
+    }
+  }, [confirmRemoveCourtId]);
+
+  const dismissRemoveCourt = useCallback(() => {
+    setConfirmRemoveCourtId(null);
+  }, []);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -646,7 +738,7 @@ export default function App() {
                 </span>
                 {phase === 'active' && (
                   <span className="text-sm text-slate-500">
-                    {courts} court{courts !== 1 ? 's' : ''}
+                    {courts.length} court{courts.length !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
@@ -676,17 +768,8 @@ export default function App() {
           <>
             <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
               <h2 className="mb-4 text-lg font-semibold text-slate-800">
-                Courts & players
+                Players
               </h2>
-              <div className="mb-6 flex flex-wrap items-end gap-4 sm:gap-6">
-                <div className="w-full min-w-0 sm:w-auto">
-                  <CourtConfig
-                    courts={courts}
-                    onCourtsChange={setCourts}
-                    disabled={false}
-                  />
-                </div>
-              </div>
               <PlayerInput key={setupResetKey} onAdd={addPlayer} />
               <div className="mt-6">
                 <h3 className="mb-3 text-sm font-medium text-slate-600">
@@ -725,28 +808,6 @@ export default function App() {
 
         {phase === 'active' && (
           <>
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">
-                  Configuration
-                </h2>
-              </div>
-              <div className="flex flex-wrap items-end gap-4 sm:gap-6">
-                <div className="w-full min-w-0 sm:w-auto">
-                  <CourtConfig
-                    courts={courts}
-                    onCourtsChange={setCourts}
-                    disabled={false}
-                  />
-                </div>
-                {matches.length > 0 && (
-                  <p className="text-xs text-slate-500">
-                    Minimum: {matches.length} court{matches.length !== 1 ? 's' : ''} (active matches)
-                  </p>
-                )}
-              </div>
-            </section>
-
             <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
               <h2 className="mb-4 text-lg font-semibold text-slate-800">
                 Add player
@@ -779,48 +840,30 @@ export default function App() {
             </section>
 
             <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <h2 className="text-lg font-semibold text-slate-800">
-                  Matches
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <button
-                    type="button"
-                    disabled={availableCourts.length === 0}
-                    onClick={() => {
-                      if (availableCourts.length > 0) {
-                        setEditingMatchId(null);
-                        setMatchMakerMode('manual');
-                        setShowManualMatchMaker(true);
-                      }
-                    }}
-                    className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-none"
-                  >
-                    Manual Match
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canQueueAdvance}
-                    onClick={() => {
-                      setEditingMatchId(null);
-                      setMatchMakerMode('advance');
-                      setShowManualMatchMaker(true);
-                    }}
-                    className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-none"
-                  >
-                    Advance Queue
-                  </button>
-                  <CreateMatchButton canCreate={canCreate} onCreate={createMatch} />
-                </div>
-              </div>
+              <h2 className="mb-4 text-lg font-semibold text-slate-800">
+                Matches
+              </h2>
               <MatchList
                 matches={matches}
                 courts={courts}
+                canCreate={canCreate}
+                availableCourtIds={availableCourtIds}
+                onAddCourt={addCourt}
+                onEditCourtName={updateCourt}
+                onRemoveCourt={requestRemoveCourt}
+                onManualMatch={(courtId) => {
+                  setEditingMatchId(null);
+                  setMatchMakerMode('manual');
+                  setPreselectedCourtId(courtId);
+                  setShowManualMatchMaker(true);
+                }}
+                onCreateNextMatch={createMatch}
                 onCompleteMatch={completeMatch}
                 onCancelMatch={requestCancelMatch}
                 onEditMatch={(matchId) => {
                   setEditingMatchId(matchId);
                   setMatchMakerMode('manual');
+                  setPreselectedCourtId(null);
                   setShowManualMatchMaker(true);
                 }}
               />
@@ -831,12 +874,27 @@ export default function App() {
                 <h2 className="text-lg font-semibold text-slate-800">
                   Advance queue <span className="font-normal text-slate-500">({advanceQueue.length})</span>
                 </h2>
+                <button
+                  type="button"
+                  disabled={!canQueueAdvance}
+                  onClick={() => {
+                    setEditingMatchId(null);
+                    setMatchMakerMode('advance');
+                    setPreselectedCourtId(null);
+                    setShowManualMatchMaker(true);
+                  }}
+                  className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-none"
+                >
+                  Advance Queue
+                </button>
               </div>
               <AdvanceQueueList
                 queuedMatches={advanceQueue}
+                courts={courts}
+                availableCourtIds={availableCourtIds}
                 onStart={moveAdvanceMatch}
                 onCancel={cancelAdvanceMatch}
-                canStart={availableCourts.length > 0}
+                canStart={availableCourtIds.length > 0}
               />
             </section>
 
@@ -893,6 +951,16 @@ export default function App() {
         onConfirm={confirmRemovePlayer}
         onCancel={dismissRemovePlayer}
       />
+      <ConfirmDialog
+        open={!!confirmRemoveCourtId}
+        title="Remove court?"
+        message={`Remove "${pendingRemoveCourt?.name || 'this court'}"? You cannot undo this.`}
+        confirmLabel="Remove court"
+        cancelLabel="Keep"
+        variant="danger"
+        onConfirm={confirmRemoveCourt}
+        onCancel={dismissRemoveCourt}
+      />
       {showManualMatchMaker && (
         <ManualMatchMaker
           players={players}
@@ -905,9 +973,11 @@ export default function App() {
           editMatchId={editingMatchId}
           mode={matchMakerMode}
           reservedIds={reservedIdList}
+          preselectedCourtId={preselectedCourtId}
           onClose={() => {
             setShowManualMatchMaker(false);
             setEditingMatchId(null);
+            setPreselectedCourtId(null);
             setMatchMakerMode('manual');
           }}
         />
