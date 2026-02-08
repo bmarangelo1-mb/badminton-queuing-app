@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import GenderIcon from './GenderIcon';
+import { tryCreateMatch } from '../utils/queueMatcher';
 
 function CategoryBadge({ category }) {
   const isBeginners = category === 'Beginners';
@@ -12,6 +13,15 @@ function CategoryBadge({ category }) {
       {category}
     </span>
   );
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 export default function ManualMatchMaker({
@@ -128,21 +138,60 @@ export default function ManualMatchMaker({
     selectedTeam2.length === 2 &&
     (isAdvance || (selectedCourt && availableCourts.length > 0 && availableCourts.includes(selectedCourt)));
 
+  const canSmartQueue =
+    isAdvance &&
+    selectedTeam1.length === 0 &&
+    selectedTeam2.length === 0 &&
+    availablePlayers.length >= 4;
+
+  const handleSmartQueue = () => {
+    if (!canSmartQueue) return;
+    const waitingPlayers = [...availablePlayers].sort((a, b) => {
+      if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
+      return (a.addedAt || 0) - (b.addedAt || 0);
+    });
+    const { match } = tryCreateMatch(waitingPlayers, {
+      allowUnbalancedIfOnlyOption: true,
+      randomizePartners: false,
+    });
+    if (match) {
+      setSelectedTeam1(match.team1.map((p) => p.id));
+      setSelectedTeam2(match.team2.map((p) => p.id));
+      return;
+    }
+    const fallback = shuffle(waitingPlayers).slice(0, 4);
+    if (fallback.length < 4) return;
+    setSelectedTeam1([fallback[0].id, fallback[1].id]);
+    setSelectedTeam2([fallback[2].id, fallback[3].id]);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="border-b border-slate-200 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-900">
               {editMatchId ? 'Edit Match' : isAdvance ? 'Queue Match' : 'Manual Match Creation'}
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              {isAdvance && (
+                <button
+                  type="button"
+                  onClick={handleSmartQueue}
+                  disabled={!canSmartQueue}
+                  className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Smart queue
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
           </div>
           <p className="mt-2 text-sm text-slate-600">
             {editMatchId
