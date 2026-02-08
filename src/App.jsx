@@ -6,6 +6,7 @@ import PlayerSummary from './components/PlayerSummary';
 import EndQueueSummary from './components/EndQueueSummary';
 import ManualMatchMaker from './components/ManualMatchMaker';
 import ConfirmDialog from './components/ConfirmDialog';
+import PromptDialog from './components/PromptDialog';
 import MatchList from './components/MatchList';
 import AdvanceQueueList from './components/AdvanceQueueList';
 import StartQueueButton from './components/StartQueueButton';
@@ -43,6 +44,7 @@ function getInitialState() {
   const normalizePlayer = (player) => ({
     ...player,
     gender: player?.gender || GENDERS.MALE,
+    shuttleShare: Number.isFinite(player?.shuttleShare) ? player.shuttleShare : 0,
   });
 
   const normalizeMatchPlayers = (match) => ({
@@ -166,6 +168,7 @@ function reducer(state, action) {
         category: action.payload.category,
         gender: action.payload.gender || GENDERS.MALE,
         gamesPlayed: 0,
+        shuttleShare: 0,
         addedAt: Date.now(),
       };
       const players = [...state.players, player];
@@ -285,19 +288,19 @@ function reducer(state, action) {
     }
 
     case 'RESET_GAMES': {
-      const players = state.players.map((p) => ({ ...p, gamesPlayed: 0 }));
+      const players = state.players.map((p) => ({ ...p, gamesPlayed: 0, shuttleShare: 0 }));
       const matches = state.matches.map((m) => ({
         ...m,
-        team1: m.team1.map((p) => ({ ...p, gamesPlayed: 0 })),
-        team2: m.team2.map((p) => ({ ...p, gamesPlayed: 0 })),
+        team1: m.team1.map((p) => ({ ...p, gamesPlayed: 0, shuttleShare: 0 })),
+        team2: m.team2.map((p) => ({ ...p, gamesPlayed: 0, shuttleShare: 0 })),
       }));
       const advanceQueue = state.advanceQueue.map((m) => ({
         ...m,
-        team1: m.team1.map((p) => ({ ...p, gamesPlayed: 0 })),
-        team2: m.team2.map((p) => ({ ...p, gamesPlayed: 0 })),
+        team1: m.team1.map((p) => ({ ...p, gamesPlayed: 0, shuttleShare: 0 })),
+        team2: m.team2.map((p) => ({ ...p, gamesPlayed: 0, shuttleShare: 0 })),
       }));
       const restoredPlayers = state.removedPlayers
-        .map((p) => ({ ...p, gamesPlayed: 0 }))
+        .map((p) => ({ ...p, gamesPlayed: 0, shuttleShare: 0 }))
         .filter((p) => !players.some((existing) => existing.id === p.id));
       const playersWithRestored = [...players, ...restoredPlayers];
       const queue =
@@ -410,14 +413,27 @@ function reducer(state, action) {
     }
 
     case 'COMPLETE_MATCH': {
-      const m = state.matches.find((x) => x.id === action.payload);
+      const matchId =
+        typeof action.payload === 'string' ? action.payload : action.payload?.matchId;
+      const shuttleUsedValue =
+        typeof action.payload === 'object' ? Number(action.payload?.shuttleUsed) : 0;
+      const shuttleUsed =
+        Number.isFinite(shuttleUsedValue) && shuttleUsedValue > 0 ? shuttleUsedValue : 0;
+      const m = state.matches.find((x) => x.id === matchId);
       if (!m) return state;
       const ids = [...m.team1, ...m.team2].map((p) => p.id);
+      const shuttleShare = shuttleUsed / 4;
       const players = state.players.map((p) =>
-        ids.includes(p.id) ? { ...p, gamesPlayed: p.gamesPlayed + 1 } : p
+        ids.includes(p.id)
+          ? {
+              ...p,
+              gamesPlayed: (p.gamesPlayed || 0) + 1,
+              shuttleShare: (p.shuttleShare || 0) + shuttleShare,
+            }
+          : p
       );
       const queue = [...state.queue, ...ids];
-      const matches = state.matches.filter((x) => x.id !== action.payload);
+      const matches = state.matches.filter((x) => x.id !== matchId);
       return { ...state, players, queue, matches };
     }
 
@@ -589,6 +605,8 @@ export default function App() {
   const [preselectedCourtId, setPreselectedCourtId] = useState(null);
   const [matchMakerMode, setMatchMakerMode] = useState('manual');
   const [confirmCancelMatchId, setConfirmCancelMatchId] = useState(null);
+  const [confirmCompleteMatchId, setConfirmCompleteMatchId] = useState(null);
+  const [shuttleUsedInput, setShuttleUsedInput] = useState('1');
   const [confirmResetGamesOpen, setConfirmResetGamesOpen] = useState(false);
   const [confirmRemovePlayerId, setConfirmRemovePlayerId] = useState(null);
   const [confirmPermanentRemovePlayerId, setConfirmPermanentRemovePlayerId] = useState(null);
@@ -700,8 +718,24 @@ export default function App() {
     dispatch({ type: 'CREATE_MATCH', payload: { courtId } });
   }, []);
 
-  const completeMatch = useCallback((matchId) => {
-    dispatch({ type: 'COMPLETE_MATCH', payload: matchId });
+  const requestCompleteMatch = useCallback((matchId) => {
+    setConfirmCompleteMatchId(matchId);
+    setShuttleUsedInput('1');
+  }, []);
+
+  const confirmCompleteMatch = useCallback(() => {
+    if (!confirmCompleteMatchId) return;
+    const shuttleUsedValue = Math.max(0, Number(shuttleUsedInput) || 0);
+    dispatch({
+      type: 'COMPLETE_MATCH',
+      payload: { matchId: confirmCompleteMatchId, shuttleUsed: shuttleUsedValue },
+    });
+    setConfirmCompleteMatchId(null);
+    setShuttleUsedInput('1');
+  }, [confirmCompleteMatchId, shuttleUsedInput]);
+
+  const dismissCompleteMatch = useCallback(() => {
+    setConfirmCompleteMatchId(null);
   }, []);
 
   const requestCancelMatch = useCallback((matchId) => {
@@ -944,7 +978,7 @@ export default function App() {
                   setShowManualMatchMaker(true);
                 }}
                 onCreateNextMatch={createMatch}
-                onCompleteMatch={completeMatch}
+                onCompleteMatch={requestCompleteMatch}
                 onCancelMatch={requestCancelMatch}
                 onEditMatch={(matchId) => {
                   setEditingMatchId(matchId);
@@ -1011,6 +1045,19 @@ export default function App() {
           onCancel={cancelEndQueue}
         />
       )}
+      <PromptDialog
+        open={!!confirmCompleteMatchId}
+        title="Complete match"
+        message="Enter how many shuttlecocks were used in this match."
+        inputLabel="Shuttlecocks used"
+        inputValue={shuttleUsedInput}
+        onInputChange={setShuttleUsedInput}
+        confirmLabel="Complete match"
+        cancelLabel="Cancel"
+        onConfirm={confirmCompleteMatch}
+        onCancel={dismissCompleteMatch}
+        inputProps={{ type: 'number', min: '0', step: '1' }}
+      />
       <ConfirmDialog
         open={!!confirmCancelMatchId}
         title="Cancel match?"

@@ -28,48 +28,53 @@ export default function PlayerSummary({ removedPlayers, onRestore, onPermanentRe
   });
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {sorted.map((p) => (
-        <div
-          key={p.id}
-          className="flex flex-col rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 py-3"
-        >
-          <div className="mb-2 flex items-center gap-2 font-semibold uppercase tracking-wide text-slate-700">
-            <GenderIcon gender={p.gender} />
-            {p.name}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <CategoryBadge category={p.category} />
-              <span className="text-xs text-slate-500">
-                {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''} played
-              </span>
+    <>
+      <p className="mb-2 text-xs text-amber-700">
+        Warning: Permanently removed players are excluded from payment totals.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {sorted.map((p) => (
+          <div
+            key={p.id}
+            className="flex flex-col rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 py-3"
+          >
+            <div className="mb-2 flex items-center gap-2 font-semibold uppercase tracking-wide text-slate-700">
+              <GenderIcon gender={p.gender} />
+              {p.name}
             </div>
-            {onRestore ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onRestore(p.id)}
-                  className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                >
-                  Undo
-                </button>
-                {onPermanentRemove && (
+                <CategoryBadge category={p.category} />
+                <span className="text-xs text-slate-500">
+                  {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''} played
+                </span>
+              </div>
+              {onRestore ? (
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => onPermanentRemove(p.id)}
-                    className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                    onClick={() => onRestore(p.id)}
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                   >
-                    Remove permanently
+                    Undo
                   </button>
-                )}
-              </div>
-            ) : (
-              <span className="text-xs font-medium text-slate-400">Removed</span>
-            )}
+                  {onPermanentRemove && (
+                    <button
+                      type="button"
+                      onClick={() => onPermanentRemove(p.id)}
+                      className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                    >
+                      Remove permanently
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs font-medium text-slate-400">Removed</span>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </>
   );
 }
