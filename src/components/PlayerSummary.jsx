@@ -13,7 +13,7 @@ function CategoryBadge({ category }) {
   );
 }
 
-export default function PlayerSummary({ removedPlayers, onRestore }) {
+export default function PlayerSummary({ removedPlayers, onRestore, onPermanentRemove }) {
   if (!removedPlayers || removedPlayers.length === 0) {
     return (
       <p className="text-sm text-slate-500">No players have been removed yet.</p>
@@ -46,13 +46,24 @@ export default function PlayerSummary({ removedPlayers, onRestore }) {
               </span>
             </div>
             {onRestore ? (
-              <button
-                type="button"
-                onClick={() => onRestore(p.id)}
-                className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              >
-                Undo
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onRestore(p.id)}
+                  className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                >
+                  Undo
+                </button>
+                {onPermanentRemove && (
+                  <button
+                    type="button"
+                    onClick={() => onPermanentRemove(p.id)}
+                    className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  >
+                    Remove permanently
+                  </button>
+                )}
+              </div>
             ) : (
               <span className="text-xs font-medium text-slate-400">Removed</span>
             )}

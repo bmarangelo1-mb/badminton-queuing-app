@@ -266,6 +266,12 @@ function reducer(state, action) {
       return { ...state, players, queue, matches, advanceQueue, removedPlayers };
     }
 
+    case 'PERMANENT_REMOVE_PLAYER': {
+      const id = action.payload;
+      const removedPlayers = state.removedPlayers.filter((p) => p.id !== id);
+      return { ...state, removedPlayers };
+    }
+
     case 'RESTORE_PLAYER': {
       const id = action.payload;
       const playerToRestore = state.removedPlayers.find((p) => p.id === id);
@@ -585,6 +591,7 @@ export default function App() {
   const [confirmCancelMatchId, setConfirmCancelMatchId] = useState(null);
   const [confirmResetGamesOpen, setConfirmResetGamesOpen] = useState(false);
   const [confirmRemovePlayerId, setConfirmRemovePlayerId] = useState(null);
+  const [confirmPermanentRemovePlayerId, setConfirmPermanentRemovePlayerId] = useState(null);
   const [confirmRemoveCourtId, setConfirmRemoveCourtId] = useState(null);
   const [setupResetKey, setSetupResetKey] = useState(0);
 
@@ -635,6 +642,9 @@ export default function App() {
   const pendingRemovePlayer = confirmRemovePlayerId
     ? players.find((p) => p.id === confirmRemovePlayerId)
     : null;
+  const pendingPermanentRemovePlayer = confirmPermanentRemovePlayerId
+    ? removedPlayers.find((p) => p.id === confirmPermanentRemovePlayerId)
+    : null;
   const pendingRemoveCourt = confirmRemoveCourtId
     ? courts.find((c) => c.id === confirmRemoveCourtId)
     : null;
@@ -661,6 +671,21 @@ export default function App() {
 
   const dismissRemovePlayer = useCallback(() => {
     setConfirmRemovePlayerId(null);
+  }, []);
+
+  const requestPermanentRemovePlayer = useCallback((id) => {
+    setConfirmPermanentRemovePlayerId(id);
+  }, []);
+
+  const confirmPermanentRemovePlayer = useCallback(() => {
+    if (confirmPermanentRemovePlayerId) {
+      dispatch({ type: 'PERMANENT_REMOVE_PLAYER', payload: confirmPermanentRemovePlayerId });
+      setConfirmPermanentRemovePlayerId(null);
+    }
+  }, [confirmPermanentRemovePlayerId]);
+
+  const dismissPermanentRemovePlayer = useCallback(() => {
+    setConfirmPermanentRemovePlayerId(null);
   }, []);
 
   const restorePlayer = useCallback((id) => {
@@ -964,7 +989,11 @@ export default function App() {
                 <h2 className="mb-4 text-lg font-semibold text-slate-800">
                   Player Summary <span className="font-normal text-slate-500">({removedPlayers.length} removed)</span>
                 </h2>
-                <PlayerSummary removedPlayers={removedPlayers} onRestore={restorePlayer} />
+                <PlayerSummary
+                  removedPlayers={removedPlayers}
+                  onRestore={restorePlayer}
+                  onPermanentRemove={requestPermanentRemovePlayer}
+                />
               </section>
             )}
           </>
@@ -1011,6 +1040,16 @@ export default function App() {
         variant="danger"
         onConfirm={confirmRemovePlayer}
         onCancel={dismissRemovePlayer}
+      />
+      <ConfirmDialog
+        open={!!confirmPermanentRemovePlayerId}
+        title="Remove player permanently?"
+        message={`This will permanently remove ${pendingPermanentRemovePlayer?.name || 'this player'}. This cannot be undone.`}
+        confirmLabel="Remove permanently"
+        cancelLabel="Keep"
+        variant="danger"
+        onConfirm={confirmPermanentRemovePlayer}
+        onCancel={dismissPermanentRemovePlayer}
       />
       <ConfirmDialog
         open={!!confirmRemoveCourtId}
