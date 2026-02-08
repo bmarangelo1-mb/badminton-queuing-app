@@ -1,3 +1,5 @@
+import GenderIcon from './GenderIcon';
+
 export default function MatchCard({ match, onComplete, onCancel, onEdit, courtName, showCourtLabel = true, className = '' }) {
   const { team1, team2 } = match;
 
@@ -52,7 +54,10 @@ function TeamDisplay({ team }) {
       {team.map((p, i) => (
         <span key={p.id} className="flex items-center gap-1.5">
           {i > 0 && <span className="text-slate-400">+</span>}
-          <span className="font-medium text-slate-900">{p.name}</span>
+          <span className="flex items-center gap-1.5 font-medium text-slate-900">
+            <GenderIcon gender={p.gender} />
+            {p.name}
+          </span>
           <span
             className={`inline-flex min-w-[5.5rem] items-center justify-center rounded px-1.5 py-0.5 text-xs font-medium ${
               p.category === 'Beginners'

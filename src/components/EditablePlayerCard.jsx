@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CATEGORIES } from '../utils/queueMatcher';
+import { CATEGORIES, GENDERS } from '../utils/queueMatcher';
+import GenderIcon from './GenderIcon';
 
 function StatusBadge({ status }) {
   const isPlaying = status === 'playing';
@@ -18,18 +19,20 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(player.name);
   const [category, setCategory] = useState(player.category);
+  const [gender, setGender] = useState(player.gender || GENDERS.MALE);
 
   // Sync local state when player prop changes
   useEffect(() => {
     if (!isEditing) {
       setName(player.name);
       setCategory(player.category);
+      setGender(player.gender || GENDERS.MALE);
     }
-  }, [player.name, player.category, isEditing]);
+  }, [player.name, player.category, player.gender, isEditing]);
 
   const handleSave = () => {
     if (name.trim() && onUpdate) {
-      onUpdate(player.id, { name: name.trim(), category });
+      onUpdate(player.id, { name: name.trim(), category, gender });
       setIsEditing(false);
     }
   };
@@ -37,6 +40,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
   const handleCancel = () => {
     setName(player.name);
     setCategory(player.category);
+    setGender(player.gender || GENDERS.MALE);
     setIsEditing(false);
   };
 
@@ -55,18 +59,46 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
           autoFocus
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-              category === 'Beginners'
-                ? 'bg-amber-50 text-amber-800'
-                : 'bg-slate-50 text-slate-700'
-            }`}
-          >
-            <option value={CATEGORIES.BEGINNERS}>{CATEGORIES.BEGINNERS}</option>
-            <option value={CATEGORIES.INTERMEDIATE}>{CATEGORIES.INTERMEDIATE}</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                category === 'Beginners'
+                  ? 'bg-amber-50 text-amber-800'
+                  : 'bg-slate-50 text-slate-700'
+              }`}
+            >
+              <option value={CATEGORIES.BEGINNERS}>{CATEGORIES.BEGINNERS}</option>
+              <option value={CATEGORIES.INTERMEDIATE}>{CATEGORIES.INTERMEDIATE}</option>
+            </select>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setGender(GENDERS.MALE)}
+                className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
+                  gender === GENDERS.MALE
+                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                    : 'border-slate-200 bg-white text-slate-600'
+                }`}
+                aria-pressed={gender === GENDERS.MALE}
+              >
+                <GenderIcon gender={GENDERS.MALE} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setGender(GENDERS.FEMALE)}
+                className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
+                  gender === GENDERS.FEMALE
+                    ? 'border-rose-300 bg-rose-50 text-rose-700'
+                    : 'border-slate-200 bg-white text-slate-600'
+                }`}
+                aria-pressed={gender === GENDERS.FEMALE}
+              >
+                <GenderIcon gender={GENDERS.FEMALE} />
+              </button>
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -95,6 +127,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
+          <GenderIcon gender={player.gender || GENDERS.MALE} />
           <span
             className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg px-2 py-0.5 text-xs font-medium ${
               player.category === 'Beginners'

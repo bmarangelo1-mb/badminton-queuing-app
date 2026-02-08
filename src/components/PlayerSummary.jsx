@@ -1,3 +1,5 @@
+import GenderIcon from './GenderIcon';
+
 function CategoryBadge({ category }) {
   const isBeginners = category === 'Beginners';
   return (
@@ -32,7 +34,8 @@ export default function PlayerSummary({ removedPlayers, onRestore }) {
           key={p.id}
           className="flex flex-col rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 py-3"
         >
-          <div className="mb-2 font-semibold uppercase tracking-wide text-slate-700">
+          <div className="mb-2 flex items-center gap-2 font-semibold uppercase tracking-wide text-slate-700">
+            <GenderIcon gender={p.gender} />
             {p.name}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">

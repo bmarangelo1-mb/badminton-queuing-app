@@ -13,6 +13,7 @@ import {
   tryCreateMatch,
   getAvailableCourts,
   canCreateMatch,
+  GENDERS,
 } from './utils/queueMatcher';
 
 const STORAGE_KEY = 'badminton-queue-state';
@@ -39,6 +40,17 @@ function getInitialState() {
     return buildCourtsFromCount(1);
   };
 
+  const normalizePlayer = (player) => ({
+    ...player,
+    gender: player?.gender || GENDERS.MALE,
+  });
+
+  const normalizeMatchPlayers = (match) => ({
+    ...match,
+    team1: (match.team1 || []).map(normalizePlayer),
+    team2: (match.team2 || []).map(normalizePlayer),
+  });
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -46,10 +58,13 @@ function getInitialState() {
       const courts = normalizeCourts(parsed.courts);
       const matches = (parsed.matches || []).map((m) => {
         if (typeof m.courtId === 'number') {
-          return { ...m, courtId: `court-${m.courtId}` };
+          return normalizeMatchPlayers({ ...m, courtId: `court-${m.courtId}` });
         }
-        return m;
+        return normalizeMatchPlayers(m);
       });
+      const players = (parsed.players || []).map(normalizePlayer);
+      const removedPlayers = (parsed.removedPlayers || []).map(normalizePlayer);
+      const advanceQueue = (parsed.advanceQueue || []).map(normalizeMatchPlayers);
       // Calculate next IDs from existing data to avoid conflicts
       const playerIds = [
         ...(parsed.players || []).map((p) => {
@@ -80,7 +95,9 @@ function getInitialState() {
         ...parsed,
         courts,
         matches,
-        advanceQueue: parsed.advanceQueue || [],
+        players,
+        removedPlayers,
+        advanceQueue,
       };
     }
   } catch (e) {
@@ -147,6 +164,7 @@ function reducer(state, action) {
         id: `p-${window.__nextPlayerId++}`,
         name: action.payload.name,
         category: action.payload.category,
+        gender: action.payload.gender || GENDERS.MALE,
         gamesPlayed: 0,
         addedAt: Date.now(),
       };
@@ -157,20 +175,63 @@ function reducer(state, action) {
     }
 
     case 'UPDATE_PLAYER': {
-      const { id, name, category } = action.payload;
+      const { id, name, category, gender } = action.payload;
       const players = state.players.map((p) =>
-        p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p
+        p.id === id
+          ? {
+              ...p,
+              name: name.trim() || p.name,
+              category: category || p.category,
+              gender: gender || p.gender,
+            }
+          : p
       );
       // Update player in matches too
       const matches = state.matches.map((m) => ({
         ...m,
-        team1: m.team1.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p)),
-        team2: m.team2.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p)),
+        team1: m.team1.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                name: name.trim() || p.name,
+                category: category || p.category,
+                gender: gender || p.gender,
+              }
+            : p
+        ),
+        team2: m.team2.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                name: name.trim() || p.name,
+                category: category || p.category,
+                gender: gender || p.gender,
+              }
+            : p
+        ),
       }));
       const advanceQueue = state.advanceQueue.map((m) => ({
         ...m,
-        team1: m.team1.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p)),
-        team2: m.team2.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, category: category || p.category } : p)),
+        team1: m.team1.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                name: name.trim() || p.name,
+                category: category || p.category,
+                gender: gender || p.gender,
+              }
+            : p
+        ),
+        team2: m.team2.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                name: name.trim() || p.name,
+                category: category || p.category,
+                gender: gender || p.gender,
+              }
+            : p
+        ),
       }));
       return { ...state, players, matches, advanceQueue };
     }
@@ -579,12 +640,12 @@ export default function App() {
     : null;
   const canQueueAdvance = waitingPlayers.length >= 4;
 
-  const addPlayer = useCallback(({ name, category }) => {
-    dispatch({ type: 'ADD_PLAYER', payload: { name, category } });
+  const addPlayer = useCallback(({ name, category, gender }) => {
+    dispatch({ type: 'ADD_PLAYER', payload: { name, category, gender } });
   }, []);
 
-  const updatePlayer = useCallback((id, { name, category }) => {
-    dispatch({ type: 'UPDATE_PLAYER', payload: { id, name, category } });
+  const updatePlayer = useCallback((id, { name, category, gender }) => {
+    dispatch({ type: 'UPDATE_PLAYER', payload: { id, name, category, gender } });
   }, []);
 
   const removePlayer = useCallback((id) => {

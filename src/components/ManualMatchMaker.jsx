@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import GenderIcon from './GenderIcon';
 
 function CategoryBadge({ category }) {
   const isBeginners = category === 'Beginners';
@@ -208,7 +209,10 @@ export default function ManualMatchMaker({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-slate-900">{p.name}</span>
+                          <span className="flex items-center gap-2 font-medium text-slate-900">
+                            <GenderIcon gender={p.gender} />
+                            {p.name}
+                          </span>
                           <CategoryBadge category={p.category} />
                           <span className="text-xs text-slate-500">
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
@@ -251,7 +255,10 @@ export default function ManualMatchMaker({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-slate-900">{p.name}</span>
+                          <span className="flex items-center gap-2 font-medium text-slate-900">
+                            <GenderIcon gender={p.gender} />
+                            {p.name}
+                          </span>
                           <CategoryBadge category={p.category} />
                           <span className="text-xs text-slate-500">
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}

@@ -1,3 +1,5 @@
+import GenderIcon from './GenderIcon';
+
 function CategoryBadge({ category }) {
   const isBeginners = category === 'Beginners';
   return (
@@ -61,7 +63,10 @@ export default function EndQueueSummary({ players, removedPlayers, onConfirm, on
                     className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 py-2.5"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-slate-700">{p.name}</span>
+                      <span className="flex items-center gap-2 font-medium text-slate-700">
+                        <GenderIcon gender={p.gender} />
+                        {p.name}
+                      </span>
                       <CategoryBadge category={p.category} />
                       <span className="text-xs text-slate-500">
                         {p.gamesPlayed || 0} game{(p.gamesPlayed || 0) !== 1 ? 's' : ''} played

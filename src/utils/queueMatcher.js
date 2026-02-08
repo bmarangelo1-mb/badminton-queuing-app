@@ -1,15 +1,14 @@
 /**
- * Queue matcher for badminton doubles.
- * Prefers balanced matches (never 3 of one category):
- * - 2 Beginners vs 2 Beginners
- * - 2 Intermediate vs 2 Intermediate
- * - 1 Beginner + 1 Intermediate vs 1 Beginner + 1 Intermediate
+ * Queue matcher for badminton doubles with gender-aware rules.
+ * Gender patterns must match: MM vs MM, FF vs FF, MF vs MF.
+ * Category patterns must match: BB vs BB, II vs II, BI vs BI.
  *
  * Exception: when there is an available court and the only possible match has 3 of one
- * category (e.g. 1I+1B vs 2B or 1B+1I vs 2I), allow it via allowUnbalancedIfOnlyOption.
+ * category (within the same gender pattern), allow it via allowUnbalancedIfOnlyOption.
  */
 
 const CATEGORIES = { BEGINNERS: 'Beginners', INTERMEDIATE: 'Intermediate' };
+const GENDERS = { MALE: 'Male', FEMALE: 'Female' };
 
 function shuffle(arr) {
   const a = [...arr];
@@ -39,12 +38,51 @@ function shuffleWithinTies(players) {
   return out;
 }
 
+function teamGenderSignature(team) {
+  const genders = team.map((p) => p.gender);
+  if (genders.every((g) => g === GENDERS.MALE)) return 'MM';
+  if (genders.every((g) => g === GENDERS.FEMALE)) return 'FF';
+  return 'MF';
+}
+
+function teamCategorySignature(team) {
+  const categories = team.map((p) => p.category);
+  if (categories.every((c) => c === CATEGORIES.BEGINNERS)) return 'BB';
+  if (categories.every((c) => c === CATEGORIES.INTERMEDIATE)) return 'II';
+  return 'BI';
+}
+
 /**
- * Shuffle the 4 players and split into two teams of 2. Randomizes partners.
+ * Shuffle partners while preserving gender/category pattern when possible.
  */
 function randomizePartners(match) {
-  const four = shuffle([...match.team1, ...match.team2]);
-  return { team1: [four[0], four[1]], team2: [four[2], four[3]] };
+  const genderSig = teamGenderSignature(match.team1);
+  const categorySig = teamCategorySignature(match.team1);
+
+  if (genderSig === 'MM' || genderSig === 'FF') {
+    const all = shuffle([...match.team1, ...match.team2]);
+    if (categorySig === 'BI') {
+      const beginners = all.filter((p) => p.category === CATEGORIES.BEGINNERS);
+      const intermediates = all.filter((p) => p.category === CATEGORIES.INTERMEDIATE);
+      return {
+        team1: [beginners[0], intermediates[0]],
+        team2: [beginners[1], intermediates[1]],
+      };
+    }
+    return { team1: [all[0], all[1]], team2: [all[2], all[3]] };
+  }
+
+  if (genderSig === 'MF') {
+    const males = shuffle([...match.team1, ...match.team2].filter((p) => p.gender === GENDERS.MALE));
+    const females = shuffle([...match.team1, ...match.team2].filter((p) => p.gender === GENDERS.FEMALE));
+    if (categorySig === 'BB' || categorySig === 'II') {
+      return { team1: [males[0], females[0]], team2: [males[1], females[1]] };
+    }
+    // For BI + MF, keep original pairing to avoid breaking category rules
+    return match;
+  }
+
+  return match;
 }
 
 /**
@@ -61,9 +99,9 @@ function matchScore(m) {
 /**
  * Picks players; caller must sort by games played ascending first.
  * Shuffles within same games-played tiers so we don't always get "first four, then next four".
- * Prefers balanced matches. When multiple match types exist, picks the one that minimizes
- * total (then max) games played. If randomizePartners and everyone has played ≥1 game,
- * shuffles the 4 players into random teams.
+ * Prefers balanced matches across gender and category patterns. When multiple match types
+ * exist, picks the one that minimizes total (then max) games played. If randomizePartners
+ * and everyone has played ≥1 game, shuffles partners while preserving rules.
  *
  * @param {Array<{id: string, name: string, category: string, gamesPlayed?: number}>} queue
  * @param {{ allowUnbalancedIfOnlyOption?: boolean, randomizePartners?: boolean }} [opts]
@@ -72,44 +110,92 @@ function matchScore(m) {
 export function tryCreateMatch(queue, opts = {}) {
   const { allowUnbalancedIfOnlyOption = false, randomizePartners: doRandomizePartners = false } = opts;
   const remainingQueue = shuffleWithinTies([...queue]);
-  const beginners = remainingQueue.filter((p) => p.category === CATEGORIES.BEGINNERS);
-  const intermediates = remainingQueue.filter((p) => p.category === CATEGORIES.INTERMEDIATE);
+  const maleBeginners = remainingQueue.filter(
+    (p) => p.gender === GENDERS.MALE && p.category === CATEGORIES.BEGINNERS
+  );
+  const maleIntermediates = remainingQueue.filter(
+    (p) => p.gender === GENDERS.MALE && p.category === CATEGORIES.INTERMEDIATE
+  );
+  const femaleBeginners = remainingQueue.filter(
+    (p) => p.gender === GENDERS.FEMALE && p.category === CATEGORIES.BEGINNERS
+  );
+  const femaleIntermediates = remainingQueue.filter(
+    (p) => p.gender === GENDERS.FEMALE && p.category === CATEGORIES.INTERMEDIATE
+  );
 
   const balancedMatches = [];
-
-  // 1. 2 Beginners vs 2 Beginners
-  if (beginners.length >= 4) {
-    const team1 = beginners.slice(0, 2);
-    const team2 = beginners.slice(2, 4);
+  const pushMatch = (team1, team2) => {
     const ids = new Set([...team1, ...team2].map((p) => p.id));
     balancedMatches.push({
       match: { team1, team2 },
       remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
     });
+  };
+
+  // MM patterns
+  if (maleBeginners.length >= 4) {
+    pushMatch(maleBeginners.slice(0, 2), maleBeginners.slice(2, 4));
+  }
+  if (maleIntermediates.length >= 4) {
+    pushMatch(maleIntermediates.slice(0, 2), maleIntermediates.slice(2, 4));
+  }
+  if (maleBeginners.length >= 2 && maleIntermediates.length >= 2) {
+    pushMatch(
+      [maleBeginners[0], maleIntermediates[0]],
+      [maleBeginners[1], maleIntermediates[1]]
+    );
   }
 
-  // 2. 2 Intermediate vs 2 Intermediate
-  if (intermediates.length >= 4) {
-    const team1 = intermediates.slice(0, 2);
-    const team2 = intermediates.slice(2, 4);
-    const ids = new Set([...team1, ...team2].map((p) => p.id));
-    balancedMatches.push({
-      match: { team1, team2 },
-      remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
-    });
+  // FF patterns
+  if (femaleBeginners.length >= 4) {
+    pushMatch(femaleBeginners.slice(0, 2), femaleBeginners.slice(2, 4));
+  }
+  if (femaleIntermediates.length >= 4) {
+    pushMatch(femaleIntermediates.slice(0, 2), femaleIntermediates.slice(2, 4));
+  }
+  if (femaleBeginners.length >= 2 && femaleIntermediates.length >= 2) {
+    pushMatch(
+      [femaleBeginners[0], femaleIntermediates[0]],
+      [femaleBeginners[1], femaleIntermediates[1]]
+    );
   }
 
-  // 3. 1 Beginner + 1 Intermediate vs 1 Beginner + 1 Intermediate
-  if (beginners.length >= 2 && intermediates.length >= 2) {
-    const b = beginners.slice(0, 2);
-    const i = intermediates.slice(0, 2);
-    const team1 = [b[0], i[0]];
-    const team2 = [b[1], i[1]];
-    const ids = new Set([...team1, ...team2].map((p) => p.id));
-    balancedMatches.push({
-      match: { team1, team2 },
-      remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
-    });
+  // MF patterns
+  if (maleBeginners.length >= 2 && femaleBeginners.length >= 2) {
+    pushMatch(
+      [maleBeginners[0], femaleBeginners[0]],
+      [maleBeginners[1], femaleBeginners[1]]
+    );
+  }
+  if (maleIntermediates.length >= 2 && femaleIntermediates.length >= 2) {
+    pushMatch(
+      [maleIntermediates[0], femaleIntermediates[0]],
+      [maleIntermediates[1], femaleIntermediates[1]]
+    );
+  }
+  // Mixed category MF (BI)
+  if (
+    maleBeginners.length >= 1 &&
+    femaleIntermediates.length >= 1 &&
+    maleIntermediates.length >= 1 &&
+    femaleBeginners.length >= 1
+  ) {
+    pushMatch(
+      [maleBeginners[0], femaleIntermediates[0]],
+      [maleIntermediates[0], femaleBeginners[0]]
+    );
+  }
+  if (maleBeginners.length >= 2 && femaleIntermediates.length >= 2) {
+    pushMatch(
+      [maleBeginners[0], femaleIntermediates[0]],
+      [maleBeginners[1], femaleIntermediates[1]]
+    );
+  }
+  if (maleIntermediates.length >= 2 && femaleBeginners.length >= 2) {
+    pushMatch(
+      [maleIntermediates[0], femaleBeginners[0]],
+      [maleIntermediates[1], femaleBeginners[1]]
+    );
   }
 
   if (balancedMatches.length > 0) {
@@ -123,32 +209,31 @@ export function tryCreateMatch(queue, opts = {}) {
     return { ...chosen, match };
   }
 
-  // Exception: available court and only possible match has 3 of one category
+  // Exception: allow 3-of-one category within same gender pattern (MM/FF)
   if (allowUnbalancedIfOnlyOption) {
     const fallbackMatches = [];
-
-    if (intermediates.length >= 1 && beginners.length >= 3) {
-      const i = intermediates[0];
-      const b = beginners.slice(0, 3);
-      const team1 = [i, b[0]];
-      const team2 = [b[1], b[2]];
+    const pushFallback = (team1, team2) => {
       const ids = new Set([...team1, ...team2].map((p) => p.id));
       fallbackMatches.push({
         match: { team1, team2 },
         remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
       });
+    };
+
+    // MM fallbacks
+    if (maleBeginners.length >= 3 && maleIntermediates.length >= 1) {
+      pushFallback([maleIntermediates[0], maleBeginners[0]], [maleBeginners[1], maleBeginners[2]]);
+    }
+    if (maleBeginners.length >= 1 && maleIntermediates.length >= 3) {
+      pushFallback([maleBeginners[0], maleIntermediates[0]], [maleIntermediates[1], maleIntermediates[2]]);
     }
 
-    if (beginners.length >= 1 && intermediates.length >= 3) {
-      const b = beginners[0];
-      const i = intermediates.slice(0, 3);
-      const team1 = [b, i[0]];
-      const team2 = [i[1], i[2]];
-      const ids = new Set([...team1, ...team2].map((p) => p.id));
-      fallbackMatches.push({
-        match: { team1, team2 },
-        remainingQueue: remainingQueue.filter((p) => !ids.has(p.id)),
-      });
+    // FF fallbacks
+    if (femaleBeginners.length >= 3 && femaleIntermediates.length >= 1) {
+      pushFallback([femaleIntermediates[0], femaleBeginners[0]], [femaleBeginners[1], femaleBeginners[2]]);
+    }
+    if (femaleBeginners.length >= 1 && femaleIntermediates.length >= 3) {
+      pushFallback([femaleBeginners[0], femaleIntermediates[0]], [femaleIntermediates[1], femaleIntermediates[2]]);
     }
 
     if (fallbackMatches.length > 0) {
@@ -214,4 +299,4 @@ export function canCreateMatch(queueAsPlayers, matches, courts) {
   return !!match;
 }
 
-export { CATEGORIES };
+export { CATEGORIES, GENDERS };
