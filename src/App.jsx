@@ -608,6 +608,7 @@ export default function App() {
   const [confirmCompleteMatchId, setConfirmCompleteMatchId] = useState(null);
   const [shuttleUsedInput, setShuttleUsedInput] = useState('1');
   const [confirmResetGamesOpen, setConfirmResetGamesOpen] = useState(false);
+  const [confirmEndQueueOpen, setConfirmEndQueueOpen] = useState(false);
   const [confirmRemovePlayerId, setConfirmRemovePlayerId] = useState(null);
   const [confirmPermanentRemovePlayerId, setConfirmPermanentRemovePlayerId] = useState(null);
   const [confirmRemoveCourtId, setConfirmRemoveCourtId] = useState(null);
@@ -787,8 +788,17 @@ export default function App() {
   }, []);
 
   const confirmEndQueue = useCallback(() => {
+    setConfirmEndQueueOpen(true);
+  }, []);
+
+  const finalizeEndQueue = useCallback(() => {
     setShowEndQueueSummary(false);
+    setConfirmEndQueueOpen(false);
     dispatch({ type: 'END_QUEUE' });
+  }, []);
+
+  const dismissEndQueueConfirm = useCallback(() => {
+    setConfirmEndQueueOpen(false);
   }, []);
 
   const cancelEndQueue = useCallback(() => {
@@ -1067,6 +1077,16 @@ export default function App() {
         variant="danger"
         onConfirm={confirmCancelMatch}
         onCancel={dismissCancelMatch}
+      />
+      <ConfirmDialog
+        open={confirmEndQueueOpen}
+        title="End queue?"
+        message="This will clear all data and reset the app. Continue?"
+        confirmLabel="End queue"
+        cancelLabel="Keep"
+        variant="danger"
+        onConfirm={finalizeEndQueue}
+        onCancel={dismissEndQueueConfirm}
       />
       <ConfirmDialog
         open={confirmResetGamesOpen}
