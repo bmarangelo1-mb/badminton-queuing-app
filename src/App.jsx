@@ -609,6 +609,8 @@ export default function App() {
   const [shuttleUsedInput, setShuttleUsedInput] = useState('1');
   const [confirmResetGamesOpen, setConfirmResetGamesOpen] = useState(false);
   const [confirmEndQueueOpen, setConfirmEndQueueOpen] = useState(false);
+  const [endQueueCourtCost, setEndQueueCourtCost] = useState('0');
+  const [endQueueShuttleCost, setEndQueueShuttleCost] = useState('0');
   const [confirmRemovePlayerId, setConfirmRemovePlayerId] = useState(null);
   const [confirmPermanentRemovePlayerId, setConfirmPermanentRemovePlayerId] = useState(null);
   const [confirmRemoveCourtId, setConfirmRemoveCourtId] = useState(null);
@@ -1051,6 +1053,10 @@ export default function App() {
         <EndQueueSummary
           players={players}
           removedPlayers={removedPlayers}
+          totalCourtCost={endQueueCourtCost}
+          onTotalCourtCostChange={setEndQueueCourtCost}
+          costPerShuttlecock={endQueueShuttleCost}
+          onCostPerShuttlecockChange={setEndQueueShuttleCost}
           onConfirm={confirmEndQueue}
           onCancel={cancelEndQueue}
         />

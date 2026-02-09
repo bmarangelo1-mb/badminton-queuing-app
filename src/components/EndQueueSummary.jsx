@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import GenderIcon from './GenderIcon';
 
 function CategoryBadge({ category }) {
@@ -14,10 +13,16 @@ function CategoryBadge({ category }) {
   );
 }
 
-export default function EndQueueSummary({ players, removedPlayers, onConfirm, onCancel }) {
-  const [totalCourtCost, setTotalCourtCost] = useState('0');
-  const [costPerShuttlecock, setCostPerShuttlecock] = useState('0');
-
+export default function EndQueueSummary({
+  players,
+  removedPlayers,
+  totalCourtCost,
+  onTotalCourtCostChange,
+  costPerShuttlecock,
+  onCostPerShuttlecockChange,
+  onConfirm,
+  onCancel,
+}) {
   const courtCostValue = Number(totalCourtCost);
   const shuttleCostValue = Number(costPerShuttlecock);
 
@@ -94,7 +99,7 @@ export default function EndQueueSummary({ players, removedPlayers, onConfirm, on
                     min="0"
                     step="0.01"
                     value={totalCourtCost}
-                    onChange={(e) => setTotalCourtCost(e.target.value)}
+                    onChange={(e) => onTotalCourtCostChange?.(e.target.value)}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
                   />
                 </label>
@@ -105,7 +110,7 @@ export default function EndQueueSummary({ players, removedPlayers, onConfirm, on
                     min="0"
                     step="0.01"
                     value={costPerShuttlecock}
-                    onChange={(e) => setCostPerShuttlecock(e.target.value)}
+                    onChange={(e) => onCostPerShuttlecockChange?.(e.target.value)}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
                   />
                 </label>
