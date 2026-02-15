@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
+import { CalendarClock, Sparkles } from 'lucide-react';
 
 function TeamDisplay({ team }) {
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 sm:w-auto sm:justify-start">
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 shadow-sm sm:w-auto sm:justify-start">
       {team.map((p, i) => (
         <span key={p.id} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-slate-400">+</span>}
-          <span className="font-medium text-slate-900">{p.name}</span>
+          {i > 0 && <span className="text-white/30">+</span>}
+          <span className="max-w-[10rem] truncate font-extrabold text-white">{p.name}</span>
           <span
             className={`inline-flex min-w-[5.5rem] items-center justify-center rounded px-1.5 py-0.5 text-xs font-medium ${
               p.category === 'Beginners'
-                ? 'bg-amber-100 text-amber-800'
-                : 'bg-slate-200 text-slate-700'
+                ? 'bg-[rgba(251,191,36,0.18)] text-[rgba(255,241,200,0.95)]'
+                : 'bg-white/10 text-white/80'
             }`}
           >
             {p.category}
@@ -50,8 +51,8 @@ function QueuedMatchCard({
 
   return (
     <div
-      className={`flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition ${
-        onEdit ? 'cursor-pointer hover:border-emerald-300 hover:shadow-md' : ''
+      className={`glass-card glass-card-hover flex min-w-0 flex-col p-4 ${
+        onEdit ? 'cursor-pointer hover:border-white/20 hover:shadow-md' : ''
       }`}
       onClick={
         onEdit
@@ -65,21 +66,25 @@ function QueuedMatchCard({
           : undefined
       }
     >
-      <div className="mb-3 flex items-center gap-2">
-        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
-          Queued {index + 1}
-        </span>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="pill">
+            Queued #{index + 1}
+          </span>
+          <span className="text-xs text-[color:var(--muted)]">Ready for the next open court</span>
+        </div>
+        <CalendarClock className="h-5 w-5 text-white/40" />
       </div>
       <div className="flex min-w-0 flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap sm:gap-2">
         <TeamDisplay team={match.team1} />
-        <span className="w-full shrink-0 py-1 text-center font-medium text-slate-400 sm:w-auto sm:py-0">vs</span>
+        <span className="w-full shrink-0 py-1 text-center font-extrabold text-white/40 sm:w-auto sm:py-0">vs</span>
         <TeamDisplay team={match.team2} />
       </div>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-end">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <button
           type="button"
           onClick={() => onCancel?.(match.id)}
-          className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+          className="btn btn-secondary"
         >
           Cancel
         </button>
@@ -92,7 +97,7 @@ function QueuedMatchCard({
               id={`court-${match.id}`}
               value={selectedCourtId || ''}
               onChange={(e) => setSelectedCourtId(e.target.value)}
-              className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="field field-select min-h-[40px] px-3 py-2 text-sm font-semibold"
             >
               {availableCourts.map((court) => (
                 <option key={court.id} value={court.id}>
@@ -104,7 +109,7 @@ function QueuedMatchCard({
               type="button"
               onClick={handleStart}
               disabled={!canStart}
-              className="min-h-[44px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+              className="btn btn-primary disabled:opacity-50 w-full"
             >
               Start on court
             </button>
@@ -128,9 +133,17 @@ export default function AdvanceQueueList({
 
   if (!queuedMatches.length) {
     return (
-      <p className="text-sm text-slate-500">
-        No queued matches yet. Add one to prepare for the next available court.
-      </p>
+      <div className="glass-inset flex items-start gap-3 p-4">
+        <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white/70 shadow-sm">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-extrabold text-white">No queued matches yet</p>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Queue the next game now, then start it instantly when a court becomes available.
+          </p>
+        </div>
+      </div>
     );
   }
 

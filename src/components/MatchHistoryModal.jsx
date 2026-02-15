@@ -15,27 +15,27 @@ export default function MatchHistoryModal({ open, completedMatches, onClose, onR
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="match-history-title"
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
     >
-      <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <div className="border-b border-slate-200 p-6">
+      <div className="glass-modal w-full max-w-4xl">
+        <div className="border-b border-white/10 p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 id="match-history-title" className="text-2xl font-bold text-slate-900">
+              <h2 id="match-history-title" className="text-2xl font-bold text-white">
                 Match history
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-[color:var(--muted)]">
                 Completed games. You can void or restore a game to exclude/include it in totals.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-xl p-2 text-white/70 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--ring)]"
               aria-label="Close"
               title="Close"
             >
@@ -51,12 +51,12 @@ export default function MatchHistoryModal({ open, completedMatches, onClose, onR
           />
         </div>
 
-        <div className="border-t border-slate-200 p-6">
+        <div className="border-t border-white/10 p-6">
           <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+              className="btn btn-secondary"
             >
               Close
             </button>

@@ -3,7 +3,7 @@ import EditablePlayerCard from './EditablePlayerCard';
 export default function PlayerList({ players, onUpdate, onRemove }) {
   if (!players.length) {
     return (
-      <p className="text-sm text-slate-500">No players yet. Add players above.</p>
+      <p className="text-sm text-[color:var(--muted)]">No players yet. Add players above.</p>
     );
   }
 

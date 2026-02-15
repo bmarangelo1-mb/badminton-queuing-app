@@ -5,7 +5,9 @@ function CategoryBadge({ category }) {
   return (
     <span
       className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg px-2 py-0.5 text-xs font-medium ${
-        isBeginners ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+        isBeginners
+          ? 'bg-[rgba(251,191,36,0.18)] text-[rgba(255,241,200,0.95)]'
+          : 'bg-white/10 text-white/80'
       }`}
     >
       {category}
@@ -16,7 +18,7 @@ function CategoryBadge({ category }) {
 export default function PlayerSummary({ removedPlayers, onRestore, onPermanentRemove }) {
   if (!removedPlayers || removedPlayers.length === 0) {
     return (
-      <p className="text-sm text-slate-500">No players have been removed yet.</p>
+      <p className="text-sm text-[color:var(--muted)]">No players have been removed yet.</p>
     );
   }
 
@@ -29,23 +31,23 @@ export default function PlayerSummary({ removedPlayers, onRestore, onPermanentRe
 
   return (
     <>
-      <p className="mb-2 text-xs text-amber-700">
+      <p className="mb-2 text-xs text-[rgba(255,241,200,0.95)]">
         Warning: Permanently removed players are excluded from payment totals.
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {sorted.map((p) => (
           <div
             key={p.id}
-            className="flex flex-col rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 py-3"
+            className="glass-card glass-card-hover flex flex-col px-4 py-3"
           >
-            <div className="mb-2 flex items-center gap-2 font-semibold uppercase tracking-wide text-slate-700">
+            <div className="mb-2 flex items-center gap-2 font-extrabold uppercase tracking-wide text-white/90">
               <GenderIcon gender={p.gender} />
               {p.name}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <CategoryBadge category={p.category} />
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-[color:var(--muted)]">
                   {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''} played
                 </span>
               </div>
@@ -54,7 +56,7 @@ export default function PlayerSummary({ removedPlayers, onRestore, onPermanentRe
                   <button
                     type="button"
                     onClick={() => onRestore(p.id)}
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    className="btn btn-primary min-h-[34px] rounded-full px-3 py-1 text-xs"
                   >
                     Undo
                   </button>
@@ -62,14 +64,14 @@ export default function PlayerSummary({ removedPlayers, onRestore, onPermanentRe
                     <button
                       type="button"
                       onClick={() => onPermanentRemove(p.id)}
-                      className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                      className="btn btn-danger min-h-[34px] rounded-full px-3 py-1 text-xs"
                     >
                       Remove permanently
                     </button>
                   )}
                 </div>
               ) : (
-                <span className="text-xs font-medium text-slate-400">Removed</span>
+                <span className="text-xs font-semibold text-white/40">Removed</span>
               )}
             </div>
           </div>

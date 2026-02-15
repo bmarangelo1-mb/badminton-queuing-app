@@ -11,6 +11,8 @@ import MatchList from './components/MatchList';
 import AdvanceQueueList from './components/AdvanceQueueList';
 import StartQueueButton from './components/StartQueueButton';
 import MatchHistoryModal from './components/MatchHistoryModal';
+import SectionHeader from './components/SectionHeader';
+import AuroraBackground from './components/AuroraBackground';
 import {
   tryCreateMatch,
   getAvailableCourts,
@@ -1058,30 +1060,27 @@ export default function App() {
   }, [state]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
-      <div className="min-h-[90vh] flex-1 px-4 py-8 sm:px-6">
+    <div className="relative flex min-h-screen flex-col">
+      <AuroraBackground />
+      <div className="min-h-[90vh] flex-1 px-4 py-6 sm:px-6">
         <div className="mx-auto max-w-3xl">
-        <header className="mb-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <header className="-mx-4 mb-6 px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
+          <div className="glass-card glass-card-hover flex flex-wrap items-start justify-between gap-4 px-4 py-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl font-extrabold tracking-tight text-white">
                 Intelligent Queueing App
               </h1>
-              <p className="mt-1 text-sm font-medium uppercase tracking-wide text-slate-500">
+              <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-[color:var(--muted)]">
                 Badminton Queueing app for doubles
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <span
-                  className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-                    phase === 'setup'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-emerald-100 text-emerald-800'
-                  }`}
+                  className={`pill ${phase === 'setup' ? '' : 'pill-accent'}`}
                 >
                   {phase === 'setup' ? 'Setup' : 'Active'}
                 </span>
                 {phase === 'active' && (
-                  <span className="text-sm text-slate-500">
+                  <span className="text-sm text-[color:var(--muted)]">
                     {courts.length} court{courts.length !== 1 ? 's' : ''}
                   </span>
                 )}
@@ -1092,24 +1091,24 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowMatchHistory(true)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                  className="btn btn-secondary"
                 >
                   Match history{' '}
-                  <span className="font-normal text-slate-500">
+                  <span className="font-normal text-white/50">
                     ({(completedMatches || []).length})
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmResetGamesOpen(true)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                  className="btn btn-secondary"
                 >
                   Reset games
                 </button>
                 <button
                   type="button"
                   onClick={endQueue}
-                  className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  className="btn btn-danger"
                 >
                   End Queue
                 </button>
@@ -1120,13 +1119,13 @@ export default function App() {
 
         {phase === 'setup' && (
           <>
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
-              <h2 className="mb-4 text-lg font-semibold text-slate-800">
+            <section className="glass-card glass-card-hover mb-8 p-4 sm:p-6">
+              <h2 className="mb-4 text-lg font-extrabold text-white">
                 Players
               </h2>
               <PlayerInput key={setupResetKey} onAdd={addPlayer} />
               <div className="mt-6">
-                <h3 className="mb-3 text-sm font-medium text-slate-600">
+                <h3 className="mb-3 text-sm font-semibold text-[color:var(--muted)]">
                   Players
                 </h3>
                 <PlayerList
@@ -1145,13 +1144,13 @@ export default function App() {
                   <button
                     type="button"
                     onClick={resetSetup}
-                    className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                    className="btn btn-secondary"
                   >
                     Reset
                   </button>
                 </div>
                 {players.length > 0 && players.length < 4 && (
-                  <p className="text-sm text-amber-600">
+                  <p className="text-sm text-[rgba(255,241,200,0.95)]">
                     Add at least 4 players to start.
                   </p>
                 )}
@@ -1162,26 +1161,26 @@ export default function App() {
 
         {phase === 'active' && (
           <>
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-              <h2 className="mb-4 text-lg font-semibold text-slate-800">
+            <section className="glass-card glass-card-hover mb-8 p-6">
+              <h2 className="mb-4 text-lg font-extrabold text-white">
                 Add player
               </h2>
               <PlayerInput onAdd={addPlayer} />
             </section>
 
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
+            <section className="glass-card glass-card-hover mb-8 p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-slate-800">
-                  All players <span className="font-normal text-slate-500">({players.length})</span>
+                <h2 className="text-lg font-extrabold text-white">
+                  All players <span className="font-normal text-white/50">({players.length})</span>
                 </h2>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span className="text-slate-600">Playing: <span className="font-semibold text-slate-900">{playingCount}</span></span>
+                    <span className="inline-block h-2 w-2 rounded-full bg-[color:var(--accent)]"></span>
+                    <span className="text-[color:var(--muted)]">Playing: <span className="font-extrabold text-white">{playingCount}</span></span>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-2 w-2 rounded-full bg-slate-400"></span>
-                    <span className="text-slate-600">Waiting: <span className="font-semibold text-slate-900">{waitingCount}</span></span>
+                    <span className="inline-block h-2 w-2 rounded-full bg-white/40"></span>
+                    <span className="text-[color:var(--muted)]">Waiting: <span className="font-extrabold text-white">{waitingCount}</span></span>
                   </span>
                 </div>
               </div>
@@ -1193,10 +1192,11 @@ export default function App() {
               />
             </section>
 
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
-              <h2 className="mb-4 text-lg font-semibold text-slate-800">
-                Matches
-              </h2>
+            <section className="glass-card glass-card-hover mb-8 p-4 sm:p-6">
+              <SectionHeader
+                title="Matches"
+                meta={`${courts.length} courts • ${matches.length} playing • ${Math.max(0, courts.length - matches.length)} available`}
+              />
               <MatchList
                 matches={matches}
                 courts={courts}
@@ -1224,25 +1224,32 @@ export default function App() {
               />
             </section>
 
-            <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <h2 className="text-lg font-semibold text-slate-800">
-                  Advance queue <span className="font-normal text-slate-500">({advanceQueue.length})</span>
-                </h2>
-                <button
-                  type="button"
-                  disabled={!canQueueAdvance}
-                  onClick={() => {
-                    setEditingMatchId(null);
-                    setMatchMakerMode('advance');
-                    setPreselectedCourtId(null);
-                    setShowManualMatchMaker(true);
-                  }}
-                  className="min-h-[44px] flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white sm:flex-none"
-                >
-                  Advance Queue
-                </button>
-              </div>
+            <section className="glass-card glass-card-hover mb-8 p-4 sm:p-6">
+              <SectionHeader
+                title="Advance queue"
+                meta={`${advanceQueue.length} queued`}
+                description="Prepare the next match for the next available court."
+                actions={
+                  <button
+                    type="button"
+                    disabled={!canQueueAdvance}
+                    onClick={() => {
+                      setEditingMatchId(null);
+                      setMatchMakerMode('advance');
+                      setPreselectedCourtId(null);
+                      setShowManualMatchMaker(true);
+                    }}
+                    className="btn btn-primary disabled:opacity-50"
+                    title={
+                      canQueueAdvance
+                        ? 'Queue a match in advance'
+                        : 'Need at least 4 waiting players to queue a match'
+                    }
+                  >
+                    Queue match
+                  </button>
+                }
+              />
               <AdvanceQueueList
                 queuedMatches={advanceQueue}
                 courts={courts}
@@ -1260,9 +1267,9 @@ export default function App() {
             </section>
 
             {removedPlayers.length > 0 && (
-              <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur">
-                <h2 className="mb-4 text-lg font-semibold text-slate-800">
-                  Player Summary <span className="font-normal text-slate-500">({removedPlayers.length} removed)</span>
+              <section className="glass-card glass-card-hover mb-8 p-6">
+                <h2 className="mb-4 text-lg font-extrabold text-white">
+                  Player Summary <span className="font-normal text-white/50">({removedPlayers.length} removed)</span>
                 </h2>
                 <PlayerSummary
                   removedPlayers={removedPlayers}
@@ -1275,7 +1282,7 @@ export default function App() {
         )}
         </div>
       </div>
-      <footer className="mx-auto mt-auto w-full max-w-3xl px-4 pb-6 pt-4 text-center text-sm text-slate-500 sm:px-6">
+      <footer className="mx-auto mt-auto w-full max-w-3xl px-4 pb-6 pt-4 text-center text-sm text-[color:var(--muted)] sm:px-6">
         This app created by Mar B for Bunal Kada Martes Badminton Group
       </footer>
       {showEndQueueSummary && (

@@ -7,7 +7,9 @@ function CategoryBadge({ category }) {
   return (
     <span
       className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg px-2 py-0.5 text-xs font-medium ${
-        isBeginners ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+        isBeginners
+          ? 'bg-[rgba(251,191,36,0.18)] text-[rgba(255,241,200,0.95)]'
+          : 'bg-white/10 text-white/80'
       }`}
     >
       {category}
@@ -166,11 +168,11 @@ export default function ManualMatchMaker({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <div className="border-b border-slate-200 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-md">
+      <div className="glass-modal w-full max-w-4xl">
+        <div className="border-b border-white/10 p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-2xl font-extrabold text-white">
               {editMatchId ? 'Edit Match' : isAdvance ? 'Queue Match' : 'Manual Match Creation'}
             </h2>
             <div className="flex items-center gap-2">
@@ -179,7 +181,7 @@ export default function ManualMatchMaker({
                   type="button"
                   onClick={handleSmartQueue}
                   disabled={!canSmartQueue}
-                  className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="btn btn-secondary min-h-[40px] px-3 py-2 text-sm disabled:opacity-50"
                 >
                   Smart select
                 </button>
@@ -187,13 +189,13 @@ export default function ManualMatchMaker({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="btn btn-secondary btn-icon"
               >
                 ✕
               </button>
             </div>
           </div>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-[color:var(--muted)]">
             {editMatchId
               ? 'Update players and court for this match.'
               : isAdvance
@@ -205,17 +207,17 @@ export default function ManualMatchMaker({
         <div className="max-h-[70vh] overflow-y-auto p-6">
           {!isAdvance && (
             <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-slate-700">Court</label>
+              <label className="mb-2 block text-sm font-semibold text-[color:var(--muted)]">Court</label>
               {availableCourts.length > 0 ? (
                 lockCourtSelection ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+                  <div className="glass-inset px-4 py-2 text-sm font-extrabold text-white/90">
                     {courtNameById.get(preselectedCourtId) || 'Court'}
                   </div>
                 ) : (
                   <select
                     value={selectedCourt || ''}
                     onChange={(e) => setSelectedCourt(e.target.value)}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="field field-select px-4 py-2 text-sm font-extrabold"
                   >
                     {availableCourts.map((courtId) => (
                       <option key={courtId} value={courtId}>
@@ -225,14 +227,14 @@ export default function ManualMatchMaker({
                   </select>
                 )
               ) : (
-                <p className="text-sm text-amber-600">No available courts. Complete or cancel existing matches first.</p>
+                <p className="text-sm text-[rgba(255,241,200,0.95)]">No available courts. Complete or cancel existing matches first.</p>
               )}
             </div>
           )}
 
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-800">
+              <h3 className="mb-3 text-sm font-extrabold text-white">
                 Team 1 ({selectedTeam1.length}/2)
               </h3>
               <div className="space-y-2">
@@ -248,28 +250,28 @@ export default function ManualMatchMaker({
                       type="button"
                       onClick={() => togglePlayer(p.id, 1)}
                       disabled={isInOtherTeam || (!isSelected && selectedTeam1.length >= 2) || isPlayingElsewhere || isReservedElsewhere}
-                      className={`w-full rounded-xl border px-4 py-2.5 text-left transition ${
+                      className={`w-full min-h-[44px] rounded-2xl border px-4 py-3 text-left transition ${
                         isSelected
-                          ? 'border-emerald-500 bg-emerald-50'
+                          ? 'border-[rgba(34,211,238,0.35)] bg-[rgba(34,211,238,0.14)]'
                           : isInOtherTeam || isPlayingElsewhere || isReservedElsewhere
-                          ? 'border-slate-200 bg-slate-100 opacity-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          ? 'border-white/10 bg-white/5 opacity-50'
+                          : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
                       } disabled:cursor-not-allowed`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="flex items-center gap-2 font-medium text-slate-900">
+                          <span className="flex items-center gap-2 font-extrabold text-white">
                             <GenderIcon gender={p.gender} />
                             {p.name}
                           </span>
                           <CategoryBadge category={p.category} />
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-[color:var(--muted)]">
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
                           </span>
-                          {isPlayingElsewhere && <span className="text-xs text-amber-600">(Playing)</span>}
-                          {isReservedElsewhere && <span className="text-xs text-amber-600">(Queued)</span>}
+                          {isPlayingElsewhere && <span className="text-xs text-[rgba(255,241,200,0.95)]">(Playing)</span>}
+                          {isReservedElsewhere && <span className="text-xs text-[rgba(255,241,200,0.95)]">(Queued)</span>}
                         </div>
-                        {isSelected && <span className="text-emerald-600">✓</span>}
+                        {isSelected && <span className="text-white/90">✓</span>}
                       </div>
                     </button>
                   );
@@ -278,7 +280,7 @@ export default function ManualMatchMaker({
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-800">
+              <h3 className="mb-3 text-sm font-extrabold text-white">
                 Team 2 ({selectedTeam2.length}/2)
               </h3>
               <div className="space-y-2">
@@ -294,28 +296,28 @@ export default function ManualMatchMaker({
                       type="button"
                       onClick={() => togglePlayer(p.id, 2)}
                       disabled={isInOtherTeam || (!isSelected && selectedTeam2.length >= 2) || isPlayingElsewhere || isReservedElsewhere}
-                      className={`w-full rounded-xl border px-4 py-2.5 text-left transition ${
+                      className={`w-full min-h-[44px] rounded-2xl border px-4 py-3 text-left transition ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-[rgba(20,184,166,0.35)] bg-[rgba(20,184,166,0.12)]'
                           : isInOtherTeam || isPlayingElsewhere || isReservedElsewhere
-                          ? 'border-slate-200 bg-slate-100 opacity-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          ? 'border-white/10 bg-white/5 opacity-50'
+                          : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
                       } disabled:cursor-not-allowed`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="flex items-center gap-2 font-medium text-slate-900">
+                          <span className="flex items-center gap-2 font-extrabold text-white">
                             <GenderIcon gender={p.gender} />
                             {p.name}
                           </span>
                           <CategoryBadge category={p.category} />
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-[color:var(--muted)]">
                             {p.gamesPlayed} game{p.gamesPlayed !== 1 ? 's' : ''}
                           </span>
-                          {isPlayingElsewhere && <span className="text-xs text-amber-600">(Playing)</span>}
-                          {isReservedElsewhere && <span className="text-xs text-amber-600">(Queued)</span>}
+                          {isPlayingElsewhere && <span className="text-xs text-[rgba(255,241,200,0.95)]">(Playing)</span>}
+                          {isReservedElsewhere && <span className="text-xs text-[rgba(255,241,200,0.95)]">(Queued)</span>}
                         </div>
-                        {isSelected && <span className="text-blue-600">✓</span>}
+                        {isSelected && <span className="text-white/90">✓</span>}
                       </div>
                     </button>
                   );
@@ -325,12 +327,12 @@ export default function ManualMatchMaker({
           </div>
         </div>
 
-        <div className="border-t border-slate-200 p-6">
+        <div className="border-t border-white/10 p-6">
           <div className="flex flex-wrap items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+              className="btn btn-secondary"
             >
               Cancel
             </button>
@@ -338,7 +340,7 @@ export default function ManualMatchMaker({
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn btn-primary disabled:opacity-50"
             >
               {editMatchId ? 'Update Match' : isAdvance ? 'Queue Match' : 'Create Match'}
             </button>

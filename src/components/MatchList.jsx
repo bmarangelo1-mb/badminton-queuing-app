@@ -1,4 +1,4 @@
-import CourtCard from './CourtCard';
+import CourtCard from './CourtCard.tsx';
 import AddCourtCard from './AddCourtCard';
 
 export default function MatchList({
@@ -19,7 +19,7 @@ export default function MatchList({
   const matchByCourtId = new Map(matches.map((m) => [m.courtId, m]));
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-4 lg:grid-cols-2">
       {courts.map((court) => {
         const match = matchByCourtId.get(court.id) || null;
         const canCreateNextMatch = !match && availableCourtIds.includes(court.id) && canCreate;

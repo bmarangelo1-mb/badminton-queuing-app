@@ -14,25 +14,25 @@ export default function AlertDialog({ open, title, message, buttonLabel = 'OK', 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-md"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="alert-title"
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
+        className="glass-modal w-full max-w-sm p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="alert-title" className="text-lg font-semibold text-slate-900">
+        <h2 id="alert-title" className="text-lg font-semibold text-white">
           {title}
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">{message}</p>
+        <p className="mt-3 text-sm leading-relaxed text-[color:var(--muted)]">{message}</p>
         <div className="mt-6 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            className="btn btn-primary"
           >
             {buttonLabel}
           </button>

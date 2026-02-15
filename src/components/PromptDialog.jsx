@@ -26,26 +26,28 @@ export default function PromptDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="prompt-title"
       onClick={(e) => e.target === e.currentTarget && onCancel?.()}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
+        className="glass-modal w-full max-w-sm p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="prompt-title" className="text-lg font-semibold text-slate-900">
+        <h2 id="prompt-title" className="text-lg font-semibold text-white">
           {title}
         </h2>
-        {message && <p className="mt-3 text-sm leading-relaxed text-slate-600">{message}</p>}
-        <label className="mt-4 flex flex-col gap-1 text-sm font-medium text-slate-700">
+        {message && (
+          <p className="mt-3 text-sm leading-relaxed text-[color:var(--muted)]">{message}</p>
+        )}
+        <label className="mt-4 flex flex-col gap-1 text-sm font-medium text-[color:var(--muted)]">
           {inputLabel}
           <input
             value={inputValue}
             onChange={(e) => onInputChange?.(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="field"
             {...inputProps}
           />
         </label>
@@ -53,14 +55,14 @@ export default function PromptDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+            className="btn btn-secondary"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            className="btn btn-primary"
           >
             {confirmLabel}
           </button>

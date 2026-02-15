@@ -5,11 +5,8 @@ import GenderIcon from './GenderIcon';
 function StatusBadge({ status }) {
   const isPlaying = status === 'playing';
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isPlaying ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-      }`}
-    >
+    <span className={`pill ${isPlaying ? 'pill-accent' : ''}`}>
+      <span className={`pill-dot ${isPlaying ? 'bg-[color:var(--accent)]' : 'bg-white/40'}`} />
       {isPlaying ? 'Playing' : 'Waiting'}
     </span>
   );
@@ -46,7 +43,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
 
   if (isEditing) {
     return (
-      <li className="flex flex-col rounded-xl border-2 border-emerald-300 bg-white px-4 py-3 shadow-sm">
+      <li className="glass-card flex flex-col px-4 py-3 ring-1 ring-[rgba(34,211,238,0.22)]">
         <input
           type="text"
           value={name}
@@ -55,7 +52,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
             if (e.key === 'Enter') handleSave();
             if (e.key === 'Escape') handleCancel();
           }}
-          className="mb-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-semibold uppercase tracking-wide text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          className="field mb-2 text-sm font-extrabold uppercase tracking-wide"
           autoFocus
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -63,37 +60,27 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                category === 'Beginners'
-                  ? 'bg-amber-50 text-amber-800'
-                  : 'bg-slate-50 text-slate-700'
-              }`}
+              className="field field-select min-w-[9.5rem] px-2 py-1 text-xs font-extrabold"
             >
               <option value={CATEGORIES.BEGINNERS}>{CATEGORIES.BEGINNERS}</option>
               <option value={CATEGORIES.INTERMEDIATE}>{CATEGORIES.INTERMEDIATE}</option>
             </select>
-            <div className="flex items-center gap-1">
+            <div className="segmented">
               <button
                 type="button"
                 onClick={() => setGender(GENDERS.MALE)}
-                className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
-                  gender === GENDERS.MALE
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-600'
-                }`}
+                className={`segment ${gender === GENDERS.MALE ? 'segment-active' : ''}`}
                 aria-pressed={gender === GENDERS.MALE}
+                title="Male"
               >
                 <GenderIcon gender={GENDERS.MALE} />
               </button>
               <button
                 type="button"
                 onClick={() => setGender(GENDERS.FEMALE)}
-                className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
-                  gender === GENDERS.FEMALE
-                    ? 'border-rose-300 bg-rose-50 text-rose-700'
-                    : 'border-slate-200 bg-white text-slate-600'
-                }`}
+                className={`segment ${gender === GENDERS.FEMALE ? 'segment-active' : ''}`}
                 aria-pressed={gender === GENDERS.FEMALE}
+                title="Female"
               >
                 <GenderIcon gender={GENDERS.FEMALE} />
               </button>
@@ -103,14 +90,14 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
             <button
               type="button"
               onClick={handleSave}
-              className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-emerald-500"
+              className="btn btn-primary min-h-[36px] px-3 py-2 text-xs"
             >
               Save
             </button>
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+              className="btn btn-secondary min-h-[36px] px-3 py-2 text-xs"
             >
               Cancel
             </button>
@@ -121,8 +108,8 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
   }
 
   return (
-    <li className="flex flex-col rounded-xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm transition hover:shadow-md">
-      <div className="mb-2 font-semibold uppercase tracking-wide text-slate-900">
+    <li className="glass-card glass-card-hover flex flex-col px-4 py-3">
+      <div className="mb-2 font-extrabold uppercase tracking-wide text-white">
         {player.name}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -131,8 +118,8 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
           <span
             className={`inline-flex min-w-[5.5rem] items-center justify-center rounded-lg px-2 py-0.5 text-xs font-medium ${
               player.category === 'Beginners'
-                ? 'bg-amber-100 text-amber-800'
-                : 'bg-slate-100 text-slate-700'
+                ? 'bg-[rgba(251,191,36,0.18)] text-[rgba(255,241,200,0.95)]'
+                : 'bg-white/10 text-white/80'
             }`}
           >
             {player.category}
@@ -140,7 +127,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
           {!hideStatus && (
             <>
               <StatusBadge status={playingIds.has(player.id) ? 'playing' : 'waiting'} />
-              <span className="text-xs text-slate-500" title="Games played">
+              <span className="text-xs text-[color:var(--muted)]" title="Games played">
                 {player.gamesPlayed} game{player.gamesPlayed !== 1 ? 's' : ''}
               </span>
             </>
@@ -151,7 +138,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="rounded p-1.5 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="btn btn-secondary btn-icon min-h-[36px] w-9 rounded-xl p-0 text-white/80"
               aria-label="Update"
               title="Update"
             >
@@ -164,7 +151,7 @@ export default function EditablePlayerCard({ player, playingIds, onUpdate, onRem
             <button
               type="button"
               onClick={() => onRemove(player.id)}
-              className="rounded p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              className="btn btn-secondary btn-icon min-h-[36px] w-9 rounded-xl p-0 text-white/60 hover:text-white"
               aria-label="Remove"
               title="Remove"
             >
