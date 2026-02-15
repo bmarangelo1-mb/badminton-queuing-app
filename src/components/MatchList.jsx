@@ -14,6 +14,7 @@ export default function MatchList({
   onCompleteMatch,
   onCancelMatch,
   onEditMatch,
+  onRequestSwitchCourt,
 }) {
   const matchByCourtId = new Map(matches.map((m) => [m.courtId, m]));
 
@@ -27,6 +28,7 @@ export default function MatchList({
           <CourtCard
             key={court.id}
             court={court}
+            courts={courts}
             match={match}
             canCreateNextMatch={canCreateNextMatch}
             canRemoveCourt={canRemoveCourt}
@@ -37,6 +39,7 @@ export default function MatchList({
             onCompleteMatch={match ? () => onCompleteMatch(match.id) : undefined}
             onCancelMatch={match && onCancelMatch ? () => onCancelMatch(match.id) : undefined}
             onEditMatch={match && onEditMatch ? () => onEditMatch(match.id) : undefined}
+            onRequestSwitchCourt={onRequestSwitchCourt}
           />
         );
       })}

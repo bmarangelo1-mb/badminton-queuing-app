@@ -10,6 +10,7 @@ import PromptDialog from './components/PromptDialog';
 import MatchList from './components/MatchList';
 import AdvanceQueueList from './components/AdvanceQueueList';
 import StartQueueButton from './components/StartQueueButton';
+import MatchHistoryModal from './components/MatchHistoryModal';
 import {
   tryCreateMatch,
   getAvailableCourts,
@@ -53,6 +54,21 @@ function getInitialState() {
     team2: (match.team2 || []).map(normalizePlayer),
   });
 
+  const normalizeCompletedMatch = (match) => {
+    const normalizedCourtId =
+      typeof match?.courtId === 'number' ? `court-${match.courtId}` : match?.courtId;
+    return {
+      ...match,
+      courtId: normalizedCourtId,
+      team1: (match?.team1 || []).map(normalizePlayer),
+      team2: (match?.team2 || []).map(normalizePlayer),
+      completedAt: typeof match?.completedAt === 'number' ? match.completedAt : 0,
+      shuttleUsed: Number.isFinite(Number(match?.shuttleUsed)) ? Number(match.shuttleUsed) : 0,
+      voided: !!match?.voided,
+      voidedAt: typeof match?.voidedAt === 'number' ? match.voidedAt : null,
+    };
+  };
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -67,6 +83,7 @@ function getInitialState() {
       const players = (parsed.players || []).map(normalizePlayer);
       const removedPlayers = (parsed.removedPlayers || []).map(normalizePlayer);
       const advanceQueue = (parsed.advanceQueue || []).map(normalizeMatchPlayers);
+      const completedMatches = (parsed.completedMatches || []).map(normalizeCompletedMatch);
       // Calculate next IDs from existing data to avoid conflicts
       const playerIds = [
         ...(parsed.players || []).map((p) => {
@@ -78,7 +95,7 @@ function getInitialState() {
           return match ? parseInt(match[1], 10) : 0;
         }),
       ];
-      const matchIds = matches.map((m) => {
+      const matchIds = [...matches, ...completedMatches].map((m) => {
         const match = m.id?.match(/^m-(\d+)$/);
         return match ? parseInt(match[1], 10) : 0;
       });
@@ -100,6 +117,7 @@ function getInitialState() {
         players,
         removedPlayers,
         advanceQueue,
+        completedMatches,
       };
     }
   } catch (e) {
@@ -113,6 +131,7 @@ function getInitialState() {
     matches: [],
     advanceQueue: [],
     removedPlayers: [],
+    completedMatches: [],
   };
 }
 
@@ -317,6 +336,7 @@ function reducer(state, action) {
         matches,
         advanceQueue,
         removedPlayers: [],
+        completedMatches: [],
       };
     }
 
@@ -359,6 +379,74 @@ function reducer(state, action) {
       const queue = [...state.queue.filter((id) => !allIds.includes(id)), ...playersToAddBack];
       
       return { ...state, matches, queue };
+    }
+
+    case 'SWITCH_MATCH_COURT': {
+      const { matchId, courtId } = action.payload || {};
+      if (!matchId || !courtId) return state;
+      if (!state.courts.some((c) => c.id === courtId)) return state;
+      const matches = state.matches || [];
+      const moving = matches.find((m) => m.id === matchId);
+      if (!moving) return state;
+      if (moving.courtId === courtId) return state;
+
+      const occupying = matches.find((m) => m.courtId === courtId && m.id !== matchId) || null;
+      if (!occupying) {
+        const nextMatches = matches.map((m) => (m.id === matchId ? { ...m, courtId } : m));
+        return { ...state, matches: nextMatches };
+      }
+
+      const fromCourtId = moving.courtId;
+      const toCourtId = courtId;
+      const nextMatches = matches.map((m) => {
+        if (m.id === moving.id) return { ...m, courtId: toCourtId };
+        if (m.id === occupying.id) return { ...m, courtId: fromCourtId };
+        return m;
+      });
+      return { ...state, matches: nextMatches };
+    }
+
+    case 'UPDATE_ADVANCE_MATCH': {
+      const { matchId, team1Ids, team2Ids } = action.payload || {};
+      if (!matchId) return state;
+      const oldMatch = state.advanceQueue.find((m) => m.id === matchId);
+      if (!oldMatch) return state;
+
+      const team1 = (team1Ids || []).map((id) => state.players.find((p) => p.id === id)).filter(Boolean);
+      const team2 = (team2Ids || []).map((id) => state.players.find((p) => p.id === id)).filter(Boolean);
+      if (team1.length !== 2 || team2.length !== 2) return state;
+
+      const allIds = [...team1Ids, ...team2Ids];
+
+      // Disallow players reserved in other advance matches
+      const reservedOther = new Set(
+        state.advanceQueue
+          .filter((m) => m.id !== matchId)
+          .flatMap((m) => [...m.team1, ...m.team2].map((p) => p.id))
+      );
+      if (allIds.some((id) => reservedOther.has(id))) return state;
+
+      // Disallow players currently playing in matches
+      const playingIds = new Set();
+      for (const m of state.matches) {
+        for (const p of [...m.team1, ...m.team2]) playingIds.add(p.id);
+      }
+      if (allIds.some((id) => playingIds.has(id))) return state;
+
+      const advanceQueue = state.advanceQueue.map((m) =>
+        m.id === matchId ? { ...m, team1, team2 } : m
+      );
+
+      // Update queue - remove newly reserved players; add back released players if they're not playing/reserved
+      const oldIds = [...oldMatch.team1, ...oldMatch.team2].map((p) => p.id);
+      const released = oldIds.filter((id) => !allIds.includes(id));
+      const playersToAddBack = released.filter((id) => !playingIds.has(id) && !reservedOther.has(id));
+      const queue = [
+        ...state.queue.filter((id) => !allIds.includes(id)),
+        ...playersToAddBack.filter((id) => !state.queue.includes(id) && !allIds.includes(id)),
+      ];
+
+      return { ...state, advanceQueue, queue };
     }
 
     case 'START_QUEUE': {
@@ -418,11 +506,30 @@ function reducer(state, action) {
       const shuttleUsedValue =
         typeof action.payload === 'object' ? Number(action.payload?.shuttleUsed) : 0;
       const shuttleUsed =
-        Number.isFinite(shuttleUsedValue) && shuttleUsedValue > 0 ? shuttleUsedValue : 0;
+        Number.isFinite(shuttleUsedValue) ? Math.max(0, Math.round(shuttleUsedValue)) : 0;
       const m = state.matches.find((x) => x.id === matchId);
       if (!m) return state;
       const ids = [...m.team1, ...m.team2].map((p) => p.id);
       const shuttleShare = shuttleUsed / 4;
+      const snapshotPlayer = (p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        gender: p.gender,
+      });
+      const courtNameSnapshot =
+        state.courts.find((c) => c.id === m.courtId)?.name || 'Court';
+      const completedRecord = {
+        id: m.id,
+        courtId: m.courtId,
+        courtNameSnapshot,
+        team1: m.team1.map(snapshotPlayer),
+        team2: m.team2.map(snapshotPlayer),
+        completedAt: Date.now(),
+        shuttleUsed,
+        voided: false,
+        voidedAt: null,
+      };
       const players = state.players.map((p) =>
         ids.includes(p.id)
           ? {
@@ -434,7 +541,8 @@ function reducer(state, action) {
       );
       const queue = [...state.queue, ...ids];
       const matches = state.matches.filter((x) => x.id !== matchId);
-      return { ...state, players, queue, matches };
+      const completedMatches = [...(state.completedMatches || []), completedRecord];
+      return { ...state, players, queue, matches, completedMatches };
     }
 
     case 'CANCEL_MATCH': {
@@ -445,6 +553,49 @@ function reducer(state, action) {
       const queue = [...state.queue, ...ids];
       const matches = state.matches.filter((x) => x.id !== action.payload);
       return { ...state, queue, matches };
+    }
+
+    case 'TOGGLE_VOID_COMPLETED_MATCH': {
+      const id =
+        typeof action.payload === 'string' ? action.payload : action.payload?.id;
+      if (!id) return state;
+      const completedMatches = state.completedMatches || [];
+      const index = completedMatches.findIndex((m) => m.id === id);
+      if (index === -1) return state;
+      const match = completedMatches[index];
+      const nextVoided = !match.voided;
+      const factor = nextVoided ? -1 : 1;
+      const deltaGames = 1 * factor;
+      const deltaShuttle = ((match.shuttleUsed || 0) / 4) * factor;
+      const ids = [...(match.team1 || []), ...(match.team2 || [])].map((p) => p.id);
+      const idSet = new Set(ids);
+
+      const clampQuarter = (value) => Math.max(0, Math.round(value * 4) / 4);
+      const applyDelta = (p) => {
+        if (!idSet.has(p.id)) return p;
+        return {
+          ...p,
+          gamesPlayed: Math.max(0, (p.gamesPlayed || 0) + deltaGames),
+          shuttleShare: clampQuarter((p.shuttleShare || 0) + deltaShuttle),
+        };
+      };
+
+      const nextCompletedMatches = completedMatches.map((m, i) =>
+        i === index
+          ? {
+              ...m,
+              voided: nextVoided,
+              voidedAt: nextVoided ? Date.now() : null,
+            }
+          : m
+      );
+
+      return {
+        ...state,
+        completedMatches: nextCompletedMatches,
+        players: state.players.map(applyDelta),
+        removedPlayers: state.removedPlayers.map(applyDelta),
+      };
     }
 
     case 'MANUAL_CREATE_MATCH': {
@@ -567,6 +718,7 @@ function reducer(state, action) {
         matches: [],
         advanceQueue: [],
         removedPlayers: [],
+        completedMatches: [],
       };
     }
 
@@ -588,6 +740,7 @@ function reducer(state, action) {
         matches: [],
         advanceQueue: [],
         removedPlayers: [],
+        completedMatches: [],
       };
     }
 
@@ -598,7 +751,8 @@ function reducer(state, action) {
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { phase, courts, players, queue, matches, advanceQueue, removedPlayers } = state;
+  const { phase, courts, players, queue, matches, advanceQueue, removedPlayers, completedMatches } =
+    state;
   const [showEndQueueSummary, setShowEndQueueSummary] = useState(false);
   const [showManualMatchMaker, setShowManualMatchMaker] = useState(false);
   const [editingMatchId, setEditingMatchId] = useState(null);
@@ -611,6 +765,9 @@ export default function App() {
   const [confirmEndQueueOpen, setConfirmEndQueueOpen] = useState(false);
   const [endQueueCourtCost, setEndQueueCourtCost] = useState('0');
   const [endQueueShuttleCost, setEndQueueShuttleCost] = useState('0');
+  const [confirmToggleVoidMatchId, setConfirmToggleVoidMatchId] = useState(null);
+  const [showMatchHistory, setShowMatchHistory] = useState(false);
+  const [confirmSwitchCourt, setConfirmSwitchCourt] = useState(null);
   const [confirmRemovePlayerId, setConfirmRemovePlayerId] = useState(null);
   const [confirmPermanentRemovePlayerId, setConfirmPermanentRemovePlayerId] = useState(null);
   const [confirmRemoveCourtId, setConfirmRemoveCourtId] = useState(null);
@@ -668,6 +825,21 @@ export default function App() {
     : null;
   const pendingRemoveCourt = confirmRemoveCourtId
     ? courts.find((c) => c.id === confirmRemoveCourtId)
+    : null;
+  const pendingToggleVoidMatch = confirmToggleVoidMatchId
+    ? (completedMatches || []).find((m) => m.id === confirmToggleVoidMatchId)
+    : null;
+  const pendingSwitchFromMatch = confirmSwitchCourt
+    ? matches.find((m) => m.id === confirmSwitchCourt.matchId)
+    : null;
+  const pendingSwitchToMatch = confirmSwitchCourt
+    ? matches.find((m) => m.courtId === confirmSwitchCourt.courtId && m.id !== confirmSwitchCourt.matchId)
+    : null;
+  const pendingSwitchFromCourt = pendingSwitchFromMatch
+    ? courts.find((c) => c.id === pendingSwitchFromMatch.courtId)
+    : null;
+  const pendingSwitchToCourt = confirmSwitchCourt
+    ? courts.find((c) => c.id === confirmSwitchCourt.courtId)
     : null;
   const canQueueAdvance = waitingPlayers.length >= 4;
 
@@ -728,7 +900,7 @@ export default function App() {
 
   const confirmCompleteMatch = useCallback(() => {
     if (!confirmCompleteMatchId) return;
-    const shuttleUsedValue = Math.max(0, Number(shuttleUsedInput) || 0);
+    const shuttleUsedValue = Math.max(0, Math.round(Number(shuttleUsedInput) || 0));
     dispatch({
       type: 'COMPLETE_MATCH',
       payload: { matchId: confirmCompleteMatchId, shuttleUsed: shuttleUsedValue },
@@ -756,6 +928,20 @@ export default function App() {
     setConfirmCancelMatchId(null);
   }, []);
 
+  const requestToggleVoidMatch = useCallback((id) => {
+    setConfirmToggleVoidMatchId(id);
+  }, []);
+
+  const confirmToggleVoidMatch = useCallback(() => {
+    if (!confirmToggleVoidMatchId) return;
+    dispatch({ type: 'TOGGLE_VOID_COMPLETED_MATCH', payload: { id: confirmToggleVoidMatchId } });
+    setConfirmToggleVoidMatchId(null);
+  }, [confirmToggleVoidMatchId]);
+
+  const dismissToggleVoidMatch = useCallback(() => {
+    setConfirmToggleVoidMatchId(null);
+  }, []);
+
   const confirmResetGames = useCallback(() => {
     dispatch({ type: 'RESET_GAMES' });
     setConfirmResetGamesOpen(false);
@@ -781,7 +967,33 @@ export default function App() {
     dispatch({ type: 'CANCEL_ADVANCE_MATCH', payload: { id } });
   }, []);
 
+  const requestSwitchMatchCourt = useCallback((matchId, courtId) => {
+    const occupied = matches.some((m) => m.courtId === courtId && m.id !== matchId);
+    if (occupied) {
+      setConfirmSwitchCourt({ matchId, courtId });
+      return;
+    }
+    dispatch({ type: 'SWITCH_MATCH_COURT', payload: { matchId, courtId } });
+  }, [matches]);
+
+  const confirmSwitchMatchCourt = useCallback(() => {
+    if (!confirmSwitchCourt) return;
+    dispatch({
+      type: 'SWITCH_MATCH_COURT',
+      payload: { matchId: confirmSwitchCourt.matchId, courtId: confirmSwitchCourt.courtId },
+    });
+    setConfirmSwitchCourt(null);
+  }, [confirmSwitchCourt]);
+
+  const dismissSwitchMatchCourt = useCallback(() => {
+    setConfirmSwitchCourt(null);
+  }, []);
+
   const updateMatch = useCallback((matchId, team1Ids, team2Ids, courtId) => {
+    if ((matchId || '').startsWith('aq-')) {
+      dispatch({ type: 'UPDATE_ADVANCE_MATCH', payload: { matchId, team1Ids, team2Ids } });
+      return;
+    }
     dispatch({ type: 'UPDATE_MATCH', payload: { matchId, team1Ids, team2Ids, courtId } });
   }, []);
 
@@ -877,6 +1089,16 @@ export default function App() {
             </div>
             {phase === 'active' && (
               <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMatchHistory(true)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                >
+                  Match history{' '}
+                  <span className="font-normal text-slate-500">
+                    ({(completedMatches || []).length})
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setConfirmResetGamesOpen(true)}
@@ -998,6 +1220,7 @@ export default function App() {
                   setPreselectedCourtId(null);
                   setShowManualMatchMaker(true);
                 }}
+                onRequestSwitchCourt={requestSwitchMatchCourt}
               />
             </section>
 
@@ -1027,6 +1250,12 @@ export default function App() {
                 onStart={moveAdvanceMatch}
                 onCancel={cancelAdvanceMatch}
                 canStart={availableCourtIds.length > 0}
+                onEditMatch={(matchId) => {
+                  setEditingMatchId(matchId);
+                  setMatchMakerMode('advance');
+                  setPreselectedCourtId(null);
+                  setShowManualMatchMaker(true);
+                }}
               />
             </section>
 
@@ -1061,6 +1290,12 @@ export default function App() {
           onCancel={cancelEndQueue}
         />
       )}
+      <MatchHistoryModal
+        open={showMatchHistory}
+        completedMatches={completedMatches}
+        onRequestToggleVoid={requestToggleVoidMatch}
+        onClose={() => setShowMatchHistory(false)}
+      />
       <PromptDialog
         open={!!confirmCompleteMatchId}
         title="Complete match"
@@ -1083,6 +1318,30 @@ export default function App() {
         variant="danger"
         onConfirm={confirmCancelMatch}
         onCancel={dismissCancelMatch}
+      />
+      <ConfirmDialog
+        open={!!confirmToggleVoidMatchId}
+        title={pendingToggleVoidMatch?.voided ? 'Restore game?' : 'Void game?'}
+        message={
+          pendingToggleVoidMatch?.voided
+            ? 'This will add this game back to player totals and payment calculations. Continue?'
+            : 'This will remove this game from player totals and payment calculations. Continue?'
+        }
+        confirmLabel={pendingToggleVoidMatch?.voided ? 'Restore game' : 'Void game'}
+        cancelLabel="Cancel"
+        variant={pendingToggleVoidMatch?.voided ? 'default' : 'danger'}
+        onConfirm={confirmToggleVoidMatch}
+        onCancel={dismissToggleVoidMatch}
+      />
+      <ConfirmDialog
+        open={!!confirmSwitchCourt}
+        title="Swap courts?"
+        message={`"${pendingSwitchToCourt?.name || 'Selected court'}" is occupied. Swap the match on "${pendingSwitchFromCourt?.name || 'current court'}" with the match on "${pendingSwitchToCourt?.name || 'selected court'}"?`}
+        confirmLabel="Swap"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmSwitchMatchCourt}
+        onCancel={dismissSwitchMatchCourt}
       />
       <ConfirmDialog
         open={confirmEndQueueOpen}
@@ -1138,7 +1397,7 @@ export default function App() {
         <ManualMatchMaker
           players={players}
           playingIds={playingIds}
-          matches={matches}
+          matches={matchMakerMode === 'advance' ? advanceQueue : matches}
           courts={courts}
           onCreate={createManualMatch}
           onCreateAdvance={createAdvanceMatch}

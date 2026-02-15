@@ -22,7 +22,15 @@ function TeamDisplay({ team }) {
   );
 }
 
-function QueuedMatchCard({ match, index, availableCourts, onStart, onCancel, canStart }) {
+function QueuedMatchCard({
+  match,
+  index,
+  availableCourts,
+  onStart,
+  onCancel,
+  canStart,
+  onEdit,
+}) {
   const [selectedCourtId, setSelectedCourtId] = useState(
     availableCourts.length > 0 ? availableCourts[0].id : null
   );
@@ -41,7 +49,22 @@ function QueuedMatchCard({ match, index, availableCourts, onStart, onCancel, can
   };
 
   return (
-    <div className="flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <div
+      className={`flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition ${
+        onEdit ? 'cursor-pointer hover:border-emerald-300 hover:shadow-md' : ''
+      }`}
+      onClick={
+        onEdit
+          ? (e) => {
+              const target = e.target;
+              const tag = target?.tagName;
+              if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'OPTION') return;
+              if (typeof target?.closest === 'function' && target.closest('button,select,label')) return;
+              onEdit();
+            }
+          : undefined
+      }
+    >
       <div className="mb-3 flex items-center gap-2">
         <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
           Queued {index + 1}
@@ -99,6 +122,7 @@ export default function AdvanceQueueList({
   onStart,
   onCancel,
   canStart,
+  onEditMatch,
 }) {
   const availableCourts = courts.filter((c) => availableCourtIds.includes(c.id));
 
@@ -121,6 +145,7 @@ export default function AdvanceQueueList({
           onStart={onStart}
           onCancel={onCancel}
           canStart={canStart}
+          onEdit={onEditMatch ? () => onEditMatch(m.id) : undefined}
         />
       ))}
     </div>

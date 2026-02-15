@@ -4,6 +4,7 @@ import CreateMatchButton from './CreateMatchButton';
 
 export default function CourtCard({
   court,
+  courts,
   match,
   canCreateNextMatch,
   canRemoveCourt,
@@ -14,13 +15,21 @@ export default function CourtCard({
   onCompleteMatch,
   onCancelMatch,
   onEditMatch,
+  onRequestSwitchCourt,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState(court.name);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [draftCourtId, setDraftCourtId] = useState(court.id);
 
   useEffect(() => {
     setDraftName(court.name);
   }, [court.name]);
+
+  useEffect(() => {
+    setDraftCourtId(court.id);
+    setShowTransfer(false);
+  }, [court.id, match?.id]);
 
   const commitName = () => {
     const trimmed = draftName.trim();
@@ -61,24 +70,97 @@ export default function CourtCard({
             {court.name}
           </button>
         )}
-        {!match && (
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-            Available
-          </span>
-        )}
-        {onRemoveCourt && (
-          <button
-            type="button"
-            onClick={() => onRemoveCourt(court.id)}
-            disabled={!canRemoveCourt}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
-            aria-label="Remove court"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!match && (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              Available
+            </span>
+          )}
+
+          {match && onRequestSwitchCourt && Array.isArray(courts) && courts.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowTransfer((v) => !v)}
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
+                aria-label="Transfer match to another court"
+                title="Transfer match"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 7h14M7 7l4-4M7 7l4 4M17 17H3m14 0l-4 4m4-4l-4-4"
+                  />
+                </svg>
+              </button>
+
+              {showTransfer && (
+                <div className="absolute right-0 top-10 z-10 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-700">Transfer to</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTransfer(false)}
+                      className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      aria-label="Close"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <select
+                    value={draftCourtId || ''}
+                    onChange={(e) => setDraftCourtId(e.target.value)}
+                    className="mt-2 min-h-[40px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    {courts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name || c.id}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowTransfer(false)}
+                      className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!draftCourtId || draftCourtId === court.id}
+                      onClick={() => {
+                        onRequestSwitchCourt(match.id, draftCourtId);
+                        setShowTransfer(false);
+                      }}
+                      className="min-h-[40px] rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {onRemoveCourt && (
+            <button
+              type="button"
+              onClick={() => onRemoveCourt(court.id)}
+              disabled={!canRemoveCourt}
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+              aria-label="Remove court"
+              title="Remove court"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {match ? (

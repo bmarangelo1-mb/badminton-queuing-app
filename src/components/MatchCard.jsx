@@ -1,6 +1,14 @@
 import GenderIcon from './GenderIcon';
 
-export default function MatchCard({ match, onComplete, onCancel, onEdit, courtName, showCourtLabel = true, className = '' }) {
+export default function MatchCard({
+  match,
+  onComplete,
+  onCancel,
+  onEdit,
+  courtName,
+  showCourtLabel = true,
+  className = '',
+}) {
   const { team1, team2 } = match;
 
   return (
@@ -9,9 +17,11 @@ export default function MatchCard({ match, onComplete, onCancel, onEdit, courtNa
         onEdit ? 'cursor-pointer hover:border-emerald-300 hover:shadow-md' : 'hover:shadow-md'
       }`}
       onClick={onEdit ? (e) => {
-        if (e.target.tagName !== 'BUTTON') {
-          onEdit();
-        }
+        const target = e.target;
+        const tag = target?.tagName;
+        if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'OPTION' || tag === 'INPUT') return;
+        if (typeof target?.closest === 'function' && target.closest('button,select,option,input,label')) return;
+        onEdit();
       } : undefined}
     >
       {showCourtLabel && (
